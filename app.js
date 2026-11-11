@@ -165,7 +165,7 @@ async function load(file) {
     workbook = { ...data, name:file.name };
     $('hours-details').open = false;
     $('pick-file').title = file.name;
-    message('File letto. I tre riquadri mostrano la differenza tra ore reali e attese.');
+    message('File letto. I riquadri mostrano il confronto delle ore e le assenze utilizzate.');
     render();
   } catch (err) {
     if (token !== generation) return;
