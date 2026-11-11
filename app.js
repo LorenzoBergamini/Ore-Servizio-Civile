@@ -32,7 +32,7 @@ $('theme-toggle').addEventListener('click', () => {
 });
 updateThemeControl();
 
-const categories = [{ key: 'total', title: 'Totale ore rendicontabili', icon: '◷' }, { key: 'general', title: 'Formazione generale', icon: '↗' }, { key: 'specific', title: 'Formazione specifica', icon: '↗' }];
+const categories = [{ key: 'total', title: 'Totale ore rendicontabili' }, { key: 'general', title: 'Formazione generale' }, { key: 'specific', title: 'Formazione specifica' }];
 const statusText = { above: 'Sopra il ritmo', below: 'Sotto il ritmo', equal: 'In pari' };
 
 function message(text, error = false) {
@@ -44,8 +44,11 @@ function message(text, error = false) {
 
 function card(category, result) {
   const m = result.metrics[category.key], active = !!workbook;
+  const symbol = category.key === 'total'
+    ? '<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor"/><path d="M9 4.5V9h4" stroke="currentColor" stroke-linecap="round"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 3h5l1 1 1-1h5v12h-5l-1 1-1-1H3zM9 4v12" stroke="currentColor" stroke-linejoin="round"/></svg>';
   return `<article class="metric ${category.key}" aria-label="${category.title}">
-    <div class="category">${category.title}<span class="category-symbol" aria-hidden="true">${category.icon}</span></div>
+    <div class="category">${category.title}<span class="category-symbol" aria-hidden="true">${symbol}</span></div>
     <p class="amount">${active ? fmt(m.actual) : '—'}<span>ore</span></p>
     <p class="goal">su ${fmt(m.goal, 0)} ore ${category.key === 'total' ? 'annuali' : 'minime annuali'}</p>
     <div class="metric-bar" role="img" aria-label="${active ? fmt(m.progress * 100, 1) + '% dell’obiettivo annuale; atteso ' + fmt(m.expected / m.goal * 100, 1) + '%' : 'Carica il file per visualizzare il progresso'}"><span class="actual" style="width:${active ? Math.min(100, m.progress * 100) : 0}%"></span><span class="expected" style="left:calc(${Math.min(100, m.expected / m.goal * 100)}% - 1px)" title="Obiettivo alla data"></span></div>

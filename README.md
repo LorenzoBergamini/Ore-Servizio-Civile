@@ -107,6 +107,8 @@ Il controllo opzionale sul file originale si aspetta gli importi del prospetto d
 
 Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 351, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 13 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
+Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 15 giorni, applicazione di 14 giorni di ferie e segnalazione di una scadenza passata non rispettata.
+
 ## Dipendenze e licenze
 
 `vendor/jszip.min.js` include JSZip 3.10.1, distribuito secondo le licenze MIT o GPLv3. Il progetto usa l'opzione MIT; il testo completo è in `vendor/JSZip-LICENSE.md`. Le dipendenze npm sono richieste soltanto per i test; il sito usa i file locali inclusi.

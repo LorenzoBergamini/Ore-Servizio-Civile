@@ -7,9 +7,9 @@
   <meta name="description" content="Controlla le ore del tuo servizio civile dal prospetto Excel: formazione, totale rendicontabile e andamento alla data di oggi.">
   <title>Presenze — Il tuo servizio civile</title>
   <script src="./theme.js?v=2"></script>
-  <link rel="stylesheet" href="./styles.css?v=2">
+  <link rel="stylesheet" href="./styles.css?v=3">
   <script src="./vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js?v=2"></script>
+  <script type="module" src="./app.js?v=3"></script>
 </head>
 <body>
   <a class="skip" href="#main">Vai al contenuto</a>
@@ -28,7 +28,7 @@
     <section class="upload-panel" id="dropzone" aria-labelledby="upload-title">
       <div class="upload-icon" aria-hidden="true"><svg width="26" height="28" viewBox="0 0 26 28" fill="none"><path d="M6 2h9l6 6v17H6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 2v7h6M10 15h7M10 19h7" stroke="currentColor" stroke-width="1.6"/></svg></div>
       <div class="upload-copy"><h2 id="upload-title">Il tuo prospetto, tutto qui.</h2><p id="file-label">Trascina il file .xlsx o scegli dal dispositivo.</p><p class="small" id="file-detail">Fogli mensili del modello presenze · massimo 10 MB</p></div>
-      <div class="upload-actions"><button class="primary" id="pick-file" type="button">Carica Excel <span aria-hidden="true">↗</span></button><button class="text-button" id="demo" type="button">Prova un esempio</button></div>
+      <div class="upload-actions"><button class="primary" id="pick-file" type="button">Carica Excel <span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 13 13 3M4 3h9v9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button><button class="text-button" id="demo" type="button">Prova un esempio</button></div>
       <input id="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
     </section>
     <p id="message" role="status" aria-live="polite" hidden></p>
