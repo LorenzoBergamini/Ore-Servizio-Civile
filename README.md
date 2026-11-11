@@ -112,6 +112,8 @@ Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337
 
 Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 29 giorni, applicazione di 28 giorni di ferie e segnalazione di una scadenza passata non rispettata.
 
+Per controllare manualmente il layout mobile, apri `tests/responsive.html` sul sito servito. La pagina di verifica usa un iframe con viewport a scelta di 320, 375, 390, 430 o 768 pixel; permette di provare guida, caricamento e tabella senza modificare lo zoom del browser.
+
 ## Dipendenze e licenze
 
 `vendor/jszip.min.js` include JSZip 3.10.1, distribuito secondo le licenze MIT o GPLv3. Il progetto usa l'opzione MIT; il testo completo è in `vendor/JSZip-LICENSE.md`. Le dipendenze npm sono richieste soltanto per i test; il sito usa i file locali inclusi.

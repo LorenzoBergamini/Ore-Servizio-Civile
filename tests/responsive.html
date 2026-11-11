@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verifica responsive — Presenze</title><style>body{margin:0;padding:20px;font:14px system-ui;background:#e7ebe5;color:#20342a}header{display:flex;align-items:center;gap:15px;margin-bottom:15px}select{padding:8px}iframe{display:block;border:1px solid #6b7b6b;border-radius:12px;background:#101917;max-width:100%;height:844px}</style></head>
+<body><header><strong>Verifica della pagina su mobile</strong><label>Larghezza <select id="width"><option>320</option><option selected>375</option><option>390</option><option>430</option><option>768</option></select> px</label></header><iframe id="phone" title="Presenze a larghezza mobile" src="../" width="375" height="844"></iframe><script>document.getElementById('width').addEventListener('change',event=>{document.getElementById('phone').width=event.target.value;});</script></body>
+</html>
