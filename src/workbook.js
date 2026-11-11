@@ -68,8 +68,10 @@ export function sheetFromXml(doc, strings) {
     if (!base) throw new Error('Formula condivisa incompleta in ' + cell.ref + '.');
     cell.formula = shiftFormula(base.formula, base.ref, cell.ref);
   }
+  const makeNumber = (overrides = new Map()) => {
   const memo = new Map(), visiting = new Set();
   const number = ref => {
+    if (overrides.has(ref)) return overrides.get(ref);
     if (memo.has(ref)) return memo.get(ref);
     const cell = cells.get(ref);
     if (!cell || (!cell.hasFormula && (cell.value === null || cell.value === ''))) return 0;
@@ -86,7 +88,9 @@ export function sheetFromXml(doc, strings) {
       return result;
     } finally { visiting.delete(ref); }
   };
-  return { cells, number };
+  return number;
+  };
+  return { cells, number: makeNumber(), numberWithOverrides: (ref, overrides) => makeNumber(overrides)(ref) };
 }
 
 function excelDate(value, date1904) {
@@ -111,7 +115,10 @@ export function extractRecords(sheets, date1904 = false) {
       const specific = findCol(v => v.includes('FORMAZIONE SPECIFICA'));
       const total = findCol(v => v.includes('ORE RENDICONTABILI'));
       const service = findCol(v => /ORE SERVIZIO/.test(v));
-      if (specific && total && service) { layout = { row: Number(row), general: refParts(candidate.ref)[1], specific, total, service }; break; }
+      const permitDays = findCol(v => v === 'GG PERMESSO');
+      const sickDays = findCol(v => v === 'GG MALATTIA');
+      const injuryDays = findCol(v => v === 'GG INFORTUNIO');
+      if (specific && total && service) { layout = { row: Number(row), general: refParts(candidate.ref)[1], specific, total, service, permitDays, sickDays, injuryDays }; break; }
     }
     if (!layout) continue;
     recognized.push(name);
@@ -120,6 +127,9 @@ export function extractRecords(sheets, date1904 = false) {
     const totalRow = Number(refParts(totalsLabel.ref)[2]);
     let count = 0;
     const local = { total: 0, general: 0, specific: 0, service: 0 };
+    const absenceTotals = { permitDays: 0, sickDays: 0, injuryDays: 0 };
+    const missingAbsences = Object.keys(absenceTotals).filter(key => !layout[key]);
+    if (missingAbsences.length) warnings.push(name + ': alcune colonne delle assenze non sono presenti; i relativi contatori saranno indicati come non disponibili.');
     for (let row = layout.row + 1; row < totalRow; row++) {
       const dateCell = sheet.cells.get('A' + row);
       const date = excelDate(dateCell?.value, date1904);
@@ -129,9 +139,24 @@ export function extractRecords(sheets, date1904 = false) {
         catch (err) { throw new Error('Foglio «' + name + '»: ' + err.message); }
       }
       const hasHours = Object.values(values).some(v => v !== 0);
-      if (!date) { if (hasHours) throw new Error('Foglio «' + name + '», riga ' + row + ': data mancante o non valida.'); continue; }
+      if (!date) {
+        const hasAbsence = Object.keys(absenceTotals).some(key => layout[key] && typeof sheet.cells.get(layout[key] + row)?.value === 'number' && sheet.cells.get(layout[key] + row).value > 0);
+        if (hasHours || hasAbsence) throw new Error('Foglio «' + name + '», riga ' + row + ': data mancante o non valida.');
+        continue;
+      }
       count++;
       for (const key of Object.keys(local)) local[key] += values[key];
+      for (const key of Object.keys(absenceTotals)) {
+        values[key] = layout[key] ? sheet.number(layout[key] + row) : null;
+        if (values[key] !== null && ![0, 1].includes(values[key])) throw new Error('Foglio «' + name + '», cella ' + layout[key] + row + ': inserisci 0 o 1 per i giorni di assenza.');
+        absenceTotals[key] += values[key] ?? 0;
+      }
+      values.sickCreditHours = values.sickDays ? null : 0;
+      if (values.sickDays && (sheet.cells.get(layout.total + row)?.hasFormula || values.total === 0)) {
+        const withoutSickness = sheet.numberWithOverrides(layout.total + row, new Map([[layout.sickDays + row, 0]]));
+        const credit = values.total - withoutSickness;
+        if (credit >= -0.005 && credit <= values.total + 0.005) values.sickCreditHours = Math.max(0, credit);
+      }
       if (date < START || date > END) { if (hasHours) excluded++; continue; }
       if (seen.has(date)) throw new Error('Data duplicata (' + date + ') nel foglio «' + name + '». Rimuovi eventuali copie dei mesi.');
       seen.add(date);
@@ -143,6 +168,11 @@ export function extractRecords(sheets, date1904 = false) {
       const ref = layout[key] + totalRow;
       try { if (Math.abs(sheet.number(ref) - local[key]) > 0.005) warnings.push(name + ': il totale ' + ref + ' non coincide con la somma giornaliera. Il sito usa le righe giornaliere.'); }
       catch (err) { warnings.push(name + ': controllo del totale ' + ref + ' non disponibile (' + err.message + ').'); }
+    }
+    for (const key of Object.keys(absenceTotals)) if (layout[key]) {
+      const ref = layout[key] + totalRow;
+      try { if (Math.abs(sheet.number(ref) - absenceTotals[key]) > 0.005) warnings.push(name + ': il totale giorni ' + ref + ' non coincide con le giornate registrate. Il sito usa il dettaglio giornaliero.'); }
+      catch { warnings.push(name + ': controllo del totale giorni ' + ref + ' non disponibile.'); }
     }
   }
   if (!recognized.length || !records.length) throw new Error('Modello non riconosciuto. Carica il prospetto .xlsx con i fogli mensili, le date in colonna A e le intestazioni originali.');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { evaluateFormula, shiftFormula, sheetFromXml, extractRecords, readWorkbook } from '../src/workbook.js';
-import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones, specificComparisons } from '../src/metrics.js';
+import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones, specificComparisons, absenceSummary, addCalendarMonths } from '../src/metrics.js';
 
 const require = createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES ? process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES + '/test.cjs' : import.meta.url);
 const { xml2js } = require('xml-js');
@@ -28,9 +28,9 @@ const xml = content => parseXML('<worksheet xmlns="http://schemas.openxmlformats
 const str = (ref, text) => `<c r="${ref}" t="inlineStr"><is><t>${text}</t></is></c>`;
 const val = (ref, value) => `<c r="${ref}"><v>${value}</v></c>`;
 const sheet = (extra = '', date = 46283) => sheetFromXml(xml(
-  str('F6', 'N° ORE FORMAZIONE GENERALE') + str('G6', 'N° ORE FORMAZIONE SPECIFICA') + str('E6', 'N° ORE SERVIZIO') + str('N6', 'TOT ORE RENDICONTABILI') +
+  str('F6', 'N° ORE FORMAZIONE GENERALE') + str('G6', 'N° ORE FORMAZIONE SPECIFICA') + str('E6', 'N° ORE SERVIZIO') + str('N6', 'TOT ORE RENDICONTABILI') + str('H6','GG MALATTIA') + str('J6','GG INFORTUNIO') + str('O6','GG PERMESSO') +
   val('A9', date) + val('E9', 4) + val('F9', 2) + val('G9', 1) + '<c r="N9"><f>E9+F9+G9+H9*5</f><v>999</v></c>' +
-  str('A40', 'TOTALI DA RIPORTARE SU FORM ON LINE') + val('E40', 4) + val('F40', 2) + val('G40', 1) + val('N40', 7) + extra
+  str('A40', 'TOTALI DA RIPORTARE SU FORM ON LINE') + val('E40', 4) + val('F40', 2) + val('G40', 1) + val('N40', 7) + val('H40',0) + val('J40',0) + val('O40',0) + extra
 ), []);
 
 await test('Calendario inclusivo: inizio, fine e limiti esterni', () => {
@@ -130,6 +130,59 @@ await test('Ferie: dati Excel mantenuti e incoerenza segnalata; scadenze non rin
   assert.equal(result.sums.total,5);
   assert.equal(result.metrics.specific.expected,35);
   assert.equal(result.time.activeElapsed,76);
+});
+await test('Assenze: intestazioni riconosciute, unità intere e somme giornaliere', () => {
+  const data=extractRecords([{name:'SETTEMBRE 2026',sheet:sheet(val('H9',1)+val('J9',1)+val('O9',1)+val('H40',1)+val('J40',1)+val('O40',1))}]);
+  const row=data.records[0];
+  assert.equal(row.sickDays,1); assert.equal(row.injuryDays,1); assert.equal(row.permitDays,1);
+  assert.equal(row.sickCreditHours,5);
+  assert.throws(()=>extractRecords([{name:'A',sheet:sheet(val('O9',2))}]),/0 o 1/);
+});
+await test('Assenze: limiti permessi, malattia 15+15 e data del confronto', () => {
+  const rows=Array.from({length:31},(_,i)=>({date:new Date(Date.UTC(2026,8,18+i)).toISOString().slice(0,10),permitDays:i<21?1:0,sickDays:1,injuryDays:0}));
+  const day20=absenceSummary(rows,rows[19].date);
+  assert.equal(day20.permits.used,20); assert.equal(day20.permits.status,'exhausted');
+  const all=absenceSummary(rows,rows[30].date);
+  assert.equal(all.permits.used,21); assert.equal(all.permits.status,'over');
+  assert.equal(all.sickWithHours.used,15); assert.equal(all.sickWithoutHours.used,16);
+  assert.equal(all.sickWithoutHours.status,'over');
+  assert.equal(absenceSummary(rows,rows[14].date).sickWithoutHours.used,0);
+  assert.equal(absenceSummary(rows,rows[15].date).sickWithoutHours.used,1);
+  assert.equal(absenceSummary(rows,'2026-09-17').permits.used,0);
+  assert.equal(absenceSummary([{date:'2026-09-18'}],'2026-11-11').permits.available,false);
+});
+await test('Malattia oltre 15 giorni: escluse solo le ore accreditate, anche nei totali mensili', () => {
+  const rows=Array.from({length:16},(_,i)=>({date:new Date(Date.UTC(2026,8,18+i)).toISOString().slice(0,10),total:5,general:0,specific:0,service:0,sickDays:1,sickCreditHours:5,permitDays:0,injuryDays:0}));
+  rows[15]={...rows[15],total:12,service:4,general:1,specific:2};
+  const result=summarize(rows,'2026-11-11');
+  assert.equal(result.sums.total,82); assert.equal(result.illnessHours.removed,5);
+  assert.equal(result.months.reduce((s,m)=>s+m.total,0),82);
+  assert.equal(result.sums.service,4); assert.equal(result.sums.general,1); assert.equal(result.sums.specific,2);
+  assert.equal(summarize([...rows].reverse(),'2026-11-11').sums.total,82);
+  const earlier=summarize(rows,rows[14].date);
+  assert.equal(earlier.sums.total,75); assert.equal(earlier.illnessHours.removed,0);
+  assert.equal(earlier.all.total,82);
+  rows[15].sickCreditHours=null;
+  assert.equal(summarize(rows,'2026-11-11').illnessHours.unverifiedDays,1);
+  rows[15].sickCreditHours=0; rows[15].total=7;
+  assert.equal(summarize(rows,'2026-11-11').sums.total,82);
+  rows[0].sickDays=null; rows[15].sickCreditHours=5; rows[15].total=12;
+  assert.equal(summarize(rows,'2026-11-11').illnessHours.removed,0);
+  assert(summarize(rows,'2026-11-11').illnessHours.unverifiedDays>0);
+});
+await test('Credito malattia ricostruito anche attraverso una formula intermedia', () => {
+  const data=extractRecords([{name:'A',sheet:sheet(val('H9',1)+'<c r="Y9"><f>H9*5</f><v>999</v></c><c r="N9"><f>E9+F9+G9+Y9</f><v>999</v></c>')}]);
+  assert.equal(data.records[0].total,12); assert.equal(data.records[0].sickCreditHours,5);
+});
+await test('Infortunio: cinque mesi di calendario e gestione dei fine mese', () => {
+  assert.equal(addCalendarMonths('2026-09-18',5),'2027-02-18');
+  assert.equal(addCalendarMonths('2027-01-31',1),'2027-02-28');
+  const rows=[{date:'2026-09-18',permitDays:0,sickDays:0,injuryDays:1},{date:'2026-10-03',permitDays:0,sickDays:0,injuryDays:1}];
+  const injury=absenceSummary(rows,'2026-11-11').injury;
+  assert.equal(injury.used,2); assert.equal(injury.limit,153); assert.equal(injury.remaining,151);
+  assert.equal(injury.firstDate,'2026-09-18');
+  const none=absenceSummary(rows,'2026-09-17').injury;
+  assert.equal(none.used,0); assert.equal(none.limit,null);
 });
 await test('Formule: precedenza, parentesi, somme, riferimenti assoluti', () => {
   const get = ref => ({ E9:4, F9:2, G9:1, H9:1, E10:5 })[ref] || 0;

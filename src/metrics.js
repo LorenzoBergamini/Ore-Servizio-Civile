@@ -2,6 +2,7 @@ export const START = '2026-09-18';
 export const END = '2027-09-17';
 export const GOALS = { total: 1145, general: 30, specific: 50 };
 export const VACATION_DAYS = 28;
+export const ABSENCE_LIMITS = { permits: 20, sickWithHours: 15, sickWithoutHours: 15, injuryMonths: 5 };
 export const SPECIFIC_DEADLINES = [
   { key: 'first', goal: 35, date: '2026-12-16', label: '70% entro il 90º giorno' },
   { key: 'final', goal: 50, date: '2027-07-17', label: '100% entro il terzultimo mese' }
@@ -89,27 +90,68 @@ export function specificComparisons(records, asOf) {
   });
 }
 
+export function addCalendarMonths(value, count) {
+  dateDay(value);
+  const [year, month, day] = value.split('-').map(Number);
+  const target = new Date(Date.UTC(year, month - 1 + count, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().slice(0, 10);
+}
+
+export function absenceSummary(records, asOf) {
+  const selected = records.filter(row => row.date >= START && row.date <= END && row.date <= asOf);
+  const availabilityRows = selected.length ? selected : records;
+  const available = key => availabilityRows.length > 0 && availabilityRows.every(row => Number.isFinite(row[key]));
+  const used = key => selected.reduce((sum, row) => sum + (row[key] ?? 0), 0);
+  const limit = (actual, maximum, known) => ({ used: actual, limit: maximum, remaining: maximum === null ? null : Math.max(0, maximum - actual),
+    available: known, status: !known ? 'unknown' : actual > maximum ? 'over' : actual === maximum ? 'exhausted' : 'available' });
+  const sick = used('sickDays');
+  const firstInjury = selected.filter(row => row.injuryDays > 0).map(row => row.date).sort()[0] ?? null;
+  const injuryLimit = firstInjury ? dateDay(addCalendarMonths(firstInjury, ABSENCE_LIMITS.injuryMonths)) - dateDay(firstInjury) : null;
+  return {
+    permits: limit(used('permitDays'), ABSENCE_LIMITS.permits, available('permitDays')),
+    sickTotal: sick,
+    sickWithHours: limit(Math.min(sick, ABSENCE_LIMITS.sickWithHours), ABSENCE_LIMITS.sickWithHours, available('sickDays')),
+    sickWithoutHours: limit(Math.max(0, sick - ABSENCE_LIMITS.sickWithHours), ABSENCE_LIMITS.sickWithoutHours, available('sickDays')),
+    injury: { ...limit(used('injuryDays'), injuryLimit, available('injuryDays')), firstDate: firstInjury, months: ABSENCE_LIMITS.injuryMonths }
+  };
+}
+
 export function summarize(records, asOf, vacations = []) {
   const time = calendar(asOf, vacations);
   const sums = { total: 0, general: 0, specific: 0, service: 0 };
   const all = { ...sums };
   const months = new Map();
   let lastEntry = null, futureCount = 0, vacationConflicts = 0;
-  for (const row of records) {
+  let sickDaysSeen = 0, sickHoursRemoved = 0, allSickHoursRemoved = 0, unverifiedSickDays = 0, sickHistoryKnown = true;
+  for (const row of records.filter(row => row.date >= START && row.date <= END).sort((a, b) => a.date.localeCompare(b.date))) {
+    if (!Number.isFinite(row.sickDays)) sickHistoryKnown = false;
+    const sickDays = row.sickDays ?? 0;
+    const unpaidDays = Math.max(0, sickDays - Math.max(0, ABSENCE_LIMITS.sickWithHours - sickDaysSeen));
+    sickDaysSeen += sickDays;
+    const knownCredit = Number.isFinite(row.sickCreditHours);
+    const removed = unpaidDays > 0 && knownCredit && sickHistoryKnown ? row.sickCreditHours * unpaidDays / sickDays : 0;
+    const effectiveTotal = row.total - removed;
+    allSickHoursRemoved += removed;
     const day = dateDay(row.date);
     const key = row.date.slice(0, 7);
     if (!months.has(key)) months.set(key, { key, total: 0, general: 0, specific: 0, service: 0, all: 0 });
     const m = months.get(key);
-    m.all += row.total;
-    for (const k of Object.keys(sums)) all[k] += row[k];
+    m.all += effectiveTotal;
+    for (const k of Object.keys(sums)) all[k] += k === 'total' ? effectiveTotal : row[k];
     const hasHours = row.total !== 0 || row.general !== 0 || row.specific !== 0 || row.service !== 0;
     if (hasHours && time.vacationDates.has(day)) vacationConflicts++;
     if (day > time.day) { if (hasHours) futureCount++; continue; }
-    for (const k of Object.keys(sums)) { sums[k] += row[k]; m[k] += row[k]; }
+    sickHoursRemoved += removed;
+    if (!sickHistoryKnown && sickDays > 0) unverifiedSickDays += sickDays;
+    else if (unpaidDays > 0 && !knownCredit) unverifiedSickDays += unpaidDays;
+    for (const k of Object.keys(sums)) { const value = k === 'total' ? effectiveTotal : row[k]; sums[k] += value; m[k] += value; }
     if (hasHours && (!lastEntry || row.date > lastEntry)) lastEntry = row.date;
   }
   const metrics = Object.fromEntries(Object.entries(GOALS).map(([k, goal]) => [k, metric(sums[k], goal,
     k === 'specific' ? specificExpected(asOf) / goal : time.activeFraction)]));
   return { time, sums, all, metrics, milestones: specificMilestones(records, asOf), specificComparisons: specificComparisons(records, asOf),
+    absences: absenceSummary(records, asOf), illnessHours: { removed: sickHoursRemoved, removedAll: allSickHoursRemoved, unverifiedDays: unverifiedSickDays },
     months: [...months.values()].sort((a, b) => a.key.localeCompare(b.key)), lastEntry, futureCount, vacationConflicts };
 }

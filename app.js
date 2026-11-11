@@ -1,5 +1,5 @@
-import { today, summarize, vacationDates, VACATION_DAYS } from './src/metrics.js?v=5';
-import { readWorkbook } from './src/workbook.js';
+import { today, summarize, vacationDates, VACATION_DAYS } from './src/metrics.js?v=6';
+import { readWorkbook } from './src/workbook.js?v=6';
 
 const $ = id => document.getElementById(id);
 const fmt = (n, digits = 2) => new Intl.NumberFormat('it-IT', { maximumFractionDigits: digits }).format(n);
@@ -78,6 +78,28 @@ function specificCard(result) {
     '<p class="specific-explainer">Due ritmi distinti dall’avvio: 35 h entro 90 giorni e 50 h complessive entro il termine finale. Dopo una scadenza contano solo le ore svolte entro quel termine.</p></article>';
 }
 
+function absenceCard(result) {
+  const a = result.absences;
+  const entries = [
+    { label: 'Permessi ordinari', code: 'GG PERMESSO', data: a.permits },
+    { label: 'Malattia · con ore', code: 'Primi 15 giorni', data: a.sickWithHours },
+    { label: 'Malattia · senza ore', code: 'Ulteriori 15 giorni', data: a.sickWithoutHours },
+    { label: 'Infortunio', code: 'GG INFORTUNIO', data: a.injury }
+  ];
+  const rows = entries.map(({label, code, data}) => {
+    const injury = data === a.injury;
+    const count = !data.available ? '—' : fmt(data.used,0);
+    const maximum = injury && data.limit === null ? '5 mesi' : fmt(data.limit,0) + ' gg';
+    const usedLabel = injury && data.limit === null && data.available ? count + ' gg' : count;
+    let note = !data.available ? 'Colonna non disponibile nel file' : data.status === 'over' ? 'Limite superato di ' + fmt(data.used-data.limit,0) + ' gg' : data.remaining === null ? 'Limite impostato: 5 mesi' : fmt(data.remaining,0) + ' gg ancora disponibili';
+    if(injury && data.firstDate) note += ' · 5 mesi dal ' + dateLabel(data.firstDate);
+    const progress = data.available && data.limit ? Math.min(100,data.used/data.limit*100) : 0;
+    return '<section class="absence-row ' + data.status + '" aria-label="' + label + '"><div class="absence-line"><div><h4>' + label + '</h4><span class="absence-code">' + code + '</span></div><p class="absence-count">' + usedLabel + '<span> / ' + maximum + '</span></p></div>' +
+      '<div class="absence-bar" aria-hidden="true"><span style="width:' + progress + '%"></span></div><p class="absence-note">' + note + '</p></section>';
+  }).join('');
+  return '<article class="metric absence-card" aria-label="Assenze utilizzate"><div class="metric-header"><h3>Assenze utilizzate</h3><span class="specific-total">alla data scelta</span></div>' + rows + '</article>';
+}
+
 function render() {
   const asOf = $('as-of').value;
   if (!asOf || !$('as-of').checkValidity()) return;
@@ -92,7 +114,7 @@ function render() {
   if (active) $('download-guide').open = false;
   $('dropzone').classList.toggle('loaded', active);
   $('upload-button-label').textContent = active ? 'Carica un altro Excel' : 'Carica Excel';
-  $('metrics').innerHTML = active ? categories.map(c => card(c,result)).join('') : '';
+  $('metrics').innerHTML = active ? categories.map(c => card(c,result)).join('') + absenceCard(result) : '';
   $('export').disabled = !active;
   $('clear').disabled = !active;
   $('data-state').textContent = active ? 'Al ' + dateLabel(asOf) : '';
@@ -112,6 +134,8 @@ function render() {
     return;
   }
   const warnings = [...workbook.warnings];
+  if (result.illnessHours.removed > 0) warnings.push('Escluse ' + fmt(result.illnessHours.removed) + ' ore di malattia oltre i primi 15 giorni che le formule Excel avevano accreditato. Il file originale non viene modificato.');
+  if (result.illnessHours.unverifiedDays > 0) warnings.push(result.illnessHours.unverifiedDays + ' giorni di malattia hanno dati incompleti o totali manuali: non è possibile verificare automaticamente tutte le ore da escludere oltre i primi 15 giorni. Controlla le righe interessate.');
   if (result.vacationConflicts) warnings.push(result.vacationConflicts + ' giornate indicate come ferie contengono ore nell’Excel. Verifica i periodi; le ore del prospetto sono mantenute.');
   if (result.futureCount) warnings.push(result.futureCount + ' giornate con ore future rispetto al confronto: escluse dai riquadri e incluse solo in “tutto il file”.');
   if (result.lastEntry && result.lastEntry < asOf) warnings.push('Ultime ore registrate: ' + dateLabel(result.lastEntry) + '. Il confronto usa la data selezionata.');
@@ -204,6 +228,14 @@ $('export').addEventListener('click',() => {
   for(const period of vacations) rows.push(['Periodo ferie',period.start,period.end]);
   rows.push([],['Specifica: traguardo','Scadenza inclusa','Ore entro termine e data confronto','Ore mancanti al termine','Esito']);
   for(const m of current.milestones) rows.push([m.goal + ' h cumulative',m.date,number(m.actual),number(m.remaining),milestoneText[m.status]]);
+  rows.push([],['Assenze alla data','Giorni utilizzati','Limite','Giorni residui']);
+  const absenceExport=current.absences;
+  for(const [label,data] of [['GG PERMESSO',absenceExport.permits],['GG MALATTIA con ore',absenceExport.sickWithHours],['GG MALATTIA senza ore',absenceExport.sickWithoutHours],['GG INFORTUNIO',absenceExport.injury]]) {
+    rows.push([label,data.available ? data.used : 'Non disponibile',data.limit === null ? '5 mesi' : data.limit,data.available && data.remaining !== null ? data.remaining : '—']);
+  }
+  if(absenceExport.injury.firstDate) rows.push(['Riferimento infortunio',absenceExport.injury.firstDate,'5 mesi di calendario',absenceExport.injury.limit + ' giorni']);
+  rows.push(['Ore malattia escluse oltre i primi 15 giorni',number(current.illnessHours.removed)],['Ore malattia escluse in tutto il file',number(current.illnessHours.removedAll)]);
+  if(current.illnessHours.unverifiedDays) rows.push(['Avviso',current.illnessHours.unverifiedDays + ' giorni di malattia: contributo ore non verificabile automaticamente.']);
   if(current.vacationConflicts) rows.push(['Avviso',current.vacationConflicts + ' giornate di ferie con ore nel file: verificare.']);
   for(const warning of workbook.warnings) rows.push(['Avviso',warning]);
   if(current.futureCount) rows.push(['Avviso',current.futureCount + ' giornate con ore future escluse dai totali alla data.']);

@@ -20,7 +20,9 @@ Quante ore mi mancano da fare? Il sito risponde leggendo il prospetto aggiornato
 - Tema scuro predefinito, con selettore chiaro/scuro e preferenza ricordata.
 - Quattro settimane di ferie obbligatorie escluse dal ritmo annuale: 337 giorni disponibili.
 - Inserimento di fino a quattro periodi di ferie, per sospendere il ritmo nei giorni indicati.
-- Riquadri ordinati come totale, formazione specifica, formazione generale.
+- Quattro riquadri della stessa altezza: totale, formazione specifica, formazione generale e assenze utilizzate.
+- Contatori GG PERMESSO, GG MALATTIA (15 con ore + 15 senza ore) e GG INFORTUNIO.
+- Esclusione automatica delle ore di malattia accreditate dalle formule oltre il quindicesimo giorno, con avviso e dettaglio della correzione.
 - Formazione specifica con due confronti e scadenze visibili direttamente nel riquadro, compresa la verifica storica dei termini.
 
 Il file è elaborato nel browser e non viene inviato a server. Non viene conservato tra un caricamento della pagina e l'altro. Tema e periodi di ferie sono ricordati tramite localStorage su questo dispositivo. Se il salvataggio locale è disabilitato, il sito continua a funzionare durante la sessione. La libreria ZIP è inclusa nel progetto: non sono richieste CDN, chiavi API, account dei visitatori o servizi esterni per leggere il file.
@@ -51,7 +53,7 @@ Il foglio `RIEPILOGO` è escluso dalla somma. Anche le righe dei totali mensili 
 
 Vengono ricalcolate le formule delle colonne rilevanti, comprese quelle condivise di Excel: riferimenti locali con o senza `$`, `SUM`/`SOMMA` di intervalli, parentesi e operazioni `+ - * /`. Le formule diverse sono segnalate esplicitamente: non si utilizzano silenziosamente risultati salvati obsoleti. Il sito non è un motore di calcolo Excel universale.
 
-**Le ore rendicontabili comprendono già la formazione.** Non viene aggiunta una seconda volta. Le assenze sono conteggiate secondo le formule del file: nel modello ricevuto la colonna dei permessi ordinari non entra nelle ore rendicontabili. Il sito non modifica questa regola. Il conteggio dei permessi residui non è incluso in questa versione.
+**Le ore rendicontabili comprendono già la formazione.** Non viene aggiunta una seconda volta. Le assenze sono conteggiate secondo le formule del file: nel modello ricevuto la colonna dei permessi ordinari non entra nelle ore rendicontabili. Il sito non modifica questa regola. Il sito conta ora anche i permessi ordinari utilizzati e residui, senza modificare la regola oraria della relativa colonna.
 
 ## Metodo di confronto
 
@@ -79,6 +81,16 @@ La verifica di ciascuna scadenza somma le ore di specifica datate entro il relat
 Lo stato sopra / sotto / in pari segue lo scostamento arrotondato al centesimo di ora. La curva di ritmo è uno strumento indicativo per monitorare l'andamento; i vincoli temporali della specifica sono verificati separatamente. Le regole applicate sono quelle richieste per questo progetto, con le convenzioni sulle date esplicitate sopra.
 
 I dati fuori dal periodo di servizio sono esclusi. Eventuali giornate future rispetto alla data del confronto restano visibili soltanto nei totali dell'intero file. I giorni non presenti o non compilati non contribuiscono ai conteggi. La data di oggi segue il fuso `Europe/Rome`.
+
+## Contatori delle assenze
+
+I contatori sommano esclusivamente le giornate registrate nelle colonne `GG PERMESSO`, `GG MALATTIA` e `GG INFORTUNIO`, dalla data di inizio fino alla data scelta. Le celle giornaliere devono contenere 0 o 1. I totali mensili servono solo da controllo e non vengono sommati una seconda volta. Se una colonna manca, il relativo contatore è indicato come non disponibile.
+
+- Permessi ordinari: utilizzati su 20 giorni, con residuo e segnalazione del superamento.
+- Malattia: primi 15 giorni nella fascia con ore, successivi nella fascia senza ore, fino a ulteriori 15 giorni. Un eventuale superamento resta visibile (non viene nascosto fermando il contatore a 15).
+- Infortunio: limite personalizzato di cinque mesi indicato per questo strumento. Alla prima giornata registrata, il plafond in giorni è la durata effettiva di cinque mesi di calendario da quella data (fine mese adattato all’ultimo giorno disponibile). I giorni di infortunio utilizzati, anche non consecutivi, vengono confrontati con tale plafond. Senza infortuni registrati il limite rimane espresso come cinque mesi, senza assumere 150 giorni. È una convenzione di conteggio esplicita dello strumento.
+
+Dal sedicesimo giorno di malattia il sito rimuove dalle ore rendicontabili soltanto il contributo che la formula Excel attribuiva alla malattia: confronta la formula originale con la medesima formula ricalcolata ponendo a zero la cella di malattia, anche attraverso riferimenti intermedi. Le altre ore di presenza e le formazioni rimangono intatte. Se l’Excel già escludeva quel contributo, non viene sottratto nulla. La correzione si applica ai riquadri, ai riepiloghi mensili e al CSV; il file Excel originale non viene modificato. Se il dato è manuale o la cronologia è incompleta e il contributo non può essere ricostruito, compare un avviso invece di inventare una correzione.
 
 ## Verifica del modello
 
@@ -109,7 +121,7 @@ npm test -- "/percorso/del/prospetto.xlsx"
 
 Il controllo opzionale sul file originale si aspetta gli importi del prospetto di riferimento iniziale ed è utile per la prima versione, non per un prospetto successivamente aggiornato.
 
-Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 15 gruppi di controlli. Controllo della sintassi JavaScript completato.
+Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 20 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
 Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 29 giorni, applicazione di 28 giorni di ferie e segnalazione di una scadenza passata non rispettata.
 
