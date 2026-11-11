@@ -50,20 +50,23 @@ await test('Stati sopra, sotto, in pari e obiettivo raggiunto', () => {
   assert.equal(metric(60, 50, 1).remaining, 0);
   assert.equal(metric(60, 50, 1).completed, true);
 });
-await test('Ferie: denominatore 351, giorni trascorsi sospesi e limiti', () => {
-  const holidays = [{start:'2026-09-18',end:'2026-09-24'},{start:'2027-08-01',end:'2027-08-07'}];
-  assert.equal(calendar('2026-11-11').activeFraction,55/351);
+await test('Ferie: quattro settimane, denominatore 337, giorni trascorsi e limiti', () => {
+  const holidays = [{start:'2026-09-18',end:'2026-09-24'},{start:'2027-08-01',end:'2027-08-07'},{start:'2027-08-08',end:'2027-08-14'},{start:'2027-08-15',end:'2027-08-21'}];
+  assert.equal(calendar('2026-11-11').activeFraction,55/337);
   assert.equal(calendar('2026-09-24',holidays).activeElapsed,0);
   assert.equal(calendar('2026-09-25',holidays).activeElapsed,1);
   assert.equal(calendar('2026-11-11',holidays).vacationElapsed,7);
   assert.equal(calendar('2027-08-07',holidays).vacationElapsed,14);
-  assert.equal(calendar('2027-09-17',holidays).activeElapsed,351);
+  assert.equal(calendar('2027-09-17',holidays).activeElapsed,337);
   assert.equal(calendar('2028-01-01',holidays).activeFraction,1);
   assert.equal(calendar('2026-09-17',holidays).activeFraction,0);
-  assert.equal(calendar('2026-11-11').unscheduledVacation,14);
+  assert.equal(calendar('2026-11-11').unscheduledVacation,28);
   assert.equal(calendar('2026-11-11',holidays).unscheduledVacation,0);
   assert.equal(vacationDates([{start:'2027-08-01',end:'2027-08-14'}]).size,14);
-  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-15'}]),/14 giorni/);
+  assert.equal(vacationDates([{start:'2027-08-01',end:'2027-08-28'}]).size,28);
+  assert.equal(calendar('2026-11-11',[{start:'2027-08-01',end:'2027-08-14'}]).unscheduledVacation,14);
+  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-29'}]),/28 giorni/);
+  assert.throws(()=>vacationDates([...holidays,{start:'2027-07-01',end:'2027-07-01'}]),/quattro periodi/);
   assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-07'},{start:'2027-08-07',end:'2027-08-13'}]),/sovrapporsi/);
   assert.throws(()=>vacationDates([{start:'2027-08-01'}]),/entrambe/);
   assert.throws(()=>vacationDates([{start:'2026-09-17',end:'2026-09-20'}]),/servizio/);
@@ -78,8 +81,8 @@ await test('Specifica: curva 70% al giorno 90 e 100% al termine del decimo mese'
   assert.equal(specificExpected('2027-07-17'),50);
   assert.equal(specificExpected('2027-09-17'),50);
   const result=summarize([], '2026-11-11');
-  assert(Math.abs(result.metrics.total.expected-1145*55/351)<1e-10);
-  assert(Math.abs(result.metrics.general.expected-30*55/351)<1e-10);
+  assert(Math.abs(result.metrics.total.expected-1145*55/337)<1e-10);
+  assert(Math.abs(result.metrics.general.expected-30*55/337)<1e-10);
   assert(Math.abs(result.metrics.specific.expected-35*55/90)<1e-10);
 });
 await test('Scadenze: ore nel giorno limite valide; recuperi tardivi non sanano il termine', () => {
@@ -168,7 +171,7 @@ if (process.argv[2]) await test('File originale: 13 mesi, 365 date, totali e con
   assert.equal(result.sums.specific, 9);
   assert.equal(result.sums.service, 161.5);
   assert.equal(data.warnings.length, 0);
-  assert.equal(result.metrics.total.status, 'above');
+  assert.equal(result.metrics.total.status, 'below');
   assert.equal(result.metrics.general.status, 'above');
   assert.equal(result.metrics.specific.status, 'below');
   assert.equal(result.lastEntry, '2026-11-11');

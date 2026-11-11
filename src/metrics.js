@@ -1,7 +1,7 @@
 export const START = '2026-09-18';
 export const END = '2027-09-17';
 export const GOALS = { total: 1145, general: 30, specific: 50 };
-export const VACATION_DAYS = 14;
+export const VACATION_DAYS = 28;
 export const SPECIFIC_DEADLINES = [
   { key: 'first', goal: 35, date: '2026-12-16', label: '70% entro il 90º giorno' },
   { key: 'final', goal: 50, date: '2027-07-17', label: '100% entro il terzultimo mese' }
@@ -21,18 +21,18 @@ export function today() {
 }
 
 export function vacationDates(ranges = []) {
-  if (!Array.isArray(ranges) || ranges.length > 2) throw new Error('Indica al massimo due periodi di ferie.');
+  if (!Array.isArray(ranges) || ranges.length > 4) throw new Error('Indica al massimo quattro periodi di ferie.');
   const dates = new Set();
   for (const range of ranges) {
     if (!range.start && !range.end) continue;
     if (!range.start || !range.end) throw new Error('Completa entrambe le date del periodo di ferie.');
     const start = dateDay(range.start), end = dateDay(range.end);
     if (range.start < START || range.end > END || end < start) throw new Error('Le ferie devono ricadere nel servizio, con la fine successiva o uguale all’inizio.');
-    if (end - start + 1 > VACATION_DAYS) throw new Error('Le ferie obbligatorie possono coprire al massimo 14 giorni di calendario.');
+    if (end - start + 1 > VACATION_DAYS) throw new Error(`Le ferie obbligatorie possono coprire al massimo ${VACATION_DAYS} giorni di calendario.`);
     for (let day = start; day <= end; day++) {
       if (dates.has(day)) throw new Error('I periodi di ferie non possono sovrapporsi.');
       dates.add(day);
-      if (dates.size > VACATION_DAYS) throw new Error('I periodi superano i 14 giorni di ferie obbligatorie.');
+      if (dates.size > VACATION_DAYS) throw new Error(`I periodi superano i ${VACATION_DAYS} giorni di ferie obbligatorie.`);
     }
   }
   return dates;
