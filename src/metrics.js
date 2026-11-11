@@ -79,6 +79,16 @@ export function metric(actual, goal, fraction) {
     status: rounded > 0 ? 'above' : rounded < 0 ? 'below' : 'equal', completed: actual >= goal };
 }
 
+export function specificComparisons(records, asOf) {
+  const elapsed = Math.max(0, dateDay(asOf) - dateDay(START) + 1);
+  return specificMilestones(records, asOf).map(milestone => {
+    const duration = dateDay(milestone.date) - dateDay(START) + 1;
+    return { ...metric(milestone.actual, milestone.goal, Math.min(1, elapsed / duration)),
+      key: milestone.key, date: milestone.date, daysLeft: milestone.daysLeft,
+      deadlineStatus: milestone.status };
+  });
+}
+
 export function summarize(records, asOf, vacations = []) {
   const time = calendar(asOf, vacations);
   const sums = { total: 0, general: 0, specific: 0, service: 0 };
@@ -100,6 +110,6 @@ export function summarize(records, asOf, vacations = []) {
   }
   const metrics = Object.fromEntries(Object.entries(GOALS).map(([k, goal]) => [k, metric(sums[k], goal,
     k === 'specific' ? specificExpected(asOf) / goal : time.activeFraction)]));
-  return { time, sums, all, metrics, milestones: specificMilestones(records, asOf),
+  return { time, sums, all, metrics, milestones: specificMilestones(records, asOf), specificComparisons: specificComparisons(records, asOf),
     months: [...months.values()].sort((a, b) => a.key.localeCompare(b.key)), lastEntry, futureCount, vacationConflicts };
 }

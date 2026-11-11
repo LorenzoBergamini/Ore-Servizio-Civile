@@ -20,7 +20,8 @@ Quante ore mi mancano da fare? Il sito risponde leggendo il prospetto aggiornato
 - Tema scuro predefinito, con selettore chiaro/scuro e preferenza ricordata.
 - Quattro settimane di ferie obbligatorie escluse dal ritmo annuale: 337 giorni disponibili.
 - Inserimento di fino a quattro periodi di ferie, per sospendere il ritmo nei giorni indicati.
-- Formazione specifica con due scadenze e verifica storica delle ore completate entro i termini.
+- Riquadri ordinati come totale, formazione specifica, formazione generale.
+- Formazione specifica con due confronti e scadenze visibili direttamente nel riquadro, compresa la verifica storica dei termini.
 
 Il file è elaborato nel browser e non viene inviato a server. Non viene conservato tra un caricamento della pagina e l'altro. Tema e periodi di ferie sono ricordati tramite localStorage su questo dispositivo. Se il salvataggio locale è disabilitato, il sito continua a funzionare durante la sessione. La libreria ZIP è inclusa nel progetto: non sono richieste CDN, chiavi API, account dei visitatori o servizi esterni per leggere il file.
 
@@ -69,7 +70,7 @@ La **formazione specifica** segue un ritmo diverso:
 | 35 ore (70% di 50) | 16 dicembre 2026 | 90º giorno, contando il 18 settembre come giorno 1 |
 | 50 ore (35 + 15) | 17 luglio 2027 | Ultimo giorno del 10º mese, terzultimo mese del progetto |
 
-Il ritmo cresce uniformemente a 35 ore nei primi 90 giorni, poi da 35 a 50 entro il secondo termine e resta a 50 successivamente. Le ferie non spostano i termini. Il decimo mese va dal 18 giugno al 17 luglio 2027: si usano mesi di progetto, non mesi del calendario.
+Il riquadro della specifica mostra due ritmi indipendenti, entrambi a partire dal 18 settembre: 35 ore ripartite sui primi 90 giorni e 50 ore ripartite sui 303 giorni fino al 17 luglio. Ciascun riquadro mostra scostamento, ore reali e attese alla data, obiettivo, data limite e ore mancanti. Dopo un termine, il relativo confronto usa solo le ore datate entro quella scadenza e l’atteso resta fissato al suo obiettivo. I due obiettivi sono cumulativi: non si sommano 35 e 50. Le ferie non spostano i termini. Il decimo mese va dal 18 giugno al 17 luglio 2027: si usano mesi di progetto, non mesi del calendario.
 
 La verifica di ciascuna scadenza somma le ore di specifica datate entro il relativo termine e non successive alla data del confronto. Gli esiti sono "termine ancora aperto", "raggiunta entro il termine" e "scadenza non rispettata". Nel giorno della scadenza il termine è ancora aperto. Le ore svolte in anticipo sono valide; eventuali recuperi tardivi non cancellano il mancato rispetto del termine precedente. Una scadenza può quindi risultare non rispettata anche con 50 ore complessive raggiunte successivamente.
 
@@ -108,7 +109,7 @@ npm test -- "/percorso/del/prospetto.xlsx"
 
 Il controllo opzionale sul file originale si aspetta gli importi del prospetto di riferimento iniziale ed è utile per la prima versione, non per un prospetto successivamente aggiornato.
 
-Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 13 gruppi di controlli. Controllo della sintassi JavaScript completato.
+Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 15 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
 Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 29 giorni, applicazione di 28 giorni di ferie e segnalazione di una scadenza passata non rispettata.
 

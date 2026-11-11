@@ -1,4 +1,4 @@
-import { today, summarize, vacationDates, VACATION_DAYS } from './src/metrics.js?v=4';
+import { today, summarize, vacationDates, VACATION_DAYS } from './src/metrics.js?v=5';
 import { readWorkbook } from './src/workbook.js';
 
 const $ = id => document.getElementById(id);
@@ -33,7 +33,7 @@ $('theme-toggle').addEventListener('click', () => {
 });
 updateThemeControl();
 
-const categories = [{ key: 'total', title: 'Totale ore rendicontabili' }, { key: 'general', title: 'Formazione generale' }, { key: 'specific', title: 'Formazione specifica' }];
+const categories = [{ key: 'total', title: 'Totale ore rendicontabili' }, { key: 'specific', title: 'Formazione specifica' }, { key: 'general', title: 'Formazione generale' }];
 const statusText = { above: 'Sopra il ritmo', below: 'Sotto il ritmo', equal: 'In pari' };
 const shortStatus = { above: 'Sopra', below: 'Sotto', equal: 'In pari' };
 const milestoneText = { met: 'Raggiunta entro il termine', missed: 'Scadenza non rispettata', pending: 'Termine ancora aperto' };
@@ -46,6 +46,7 @@ function message(text, error = false) {
 }
 
 function card(category, result) {
+  if (category.key === 'specific') return specificCard(result);
   const m = result.metrics[category.key];
   const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
   const late = category.key === 'specific' && result.milestones.some(item => item.status === 'missed');
@@ -56,6 +57,25 @@ function card(category, result) {
     '<p class="metric-target">Obiettivo ' + fmt(m.goal,0) + ' h · ' + (m.completed ? 'raggiunto' : 'mancano ' + fmt(m.remaining) + ' h') + '</p>' +
     (late ? '<p class="late-warning">Una scadenza della specifica non è stata rispettata.</p>' : '') +
     '</article>';
+}
+
+function specificCard(result) {
+  const tracks = result.specificComparisons.map(m => {
+    const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
+    const label = m.key === 'first' ? 'Entro 90 giorni · 70%' : 'Entro il terzultimo mese · 100%';
+    const deadlinePassed = $('as-of').value > m.date;
+    const note = m.deadlineStatus === 'met' ? 'Scadenza rispettata' : m.deadlineStatus === 'missed'
+      ? 'Scadenza non rispettata: mancavano ' + fmt(m.remaining) + ' h.'
+      : 'Mancano ' + fmt(m.remaining) + ' h al traguardo' + (m.daysLeft ? ' · ' + m.daysLeft + ' giorni' : ' · scadenza oggi');
+    return '<section class="specific-track ' + m.status + '" aria-label="' + label + '">' +
+      '<div class="track-header"><h4>' + label + '</h4><span class="status">' + shortStatus[m.status] + '</span></div>' +
+      '<p class="track-deadline">' + dateLabel(m.date) + ' · obiettivo ' + fmt(m.goal,0) + ' h</p>' +
+      '<div class="track-values"><p class="difference" aria-label="Scostamento: ' + delta + ' ore"><span>' + delta + '</span><span class="unit">h</span></p>' +
+      '<div class="comparison"><span>' + (deadlinePassed ? 'Entro il termine' : 'Reali') + '<strong>' + fmt(m.actual) + ' h</strong></span><span>Attese alla data<strong>' + fmt(m.expected) + ' h</strong></span></div></div>' +
+      '<p class="track-note ' + (m.deadlineStatus === 'missed' ? 'missed-badge' : '') + '">' + note + '</p></section>';
+  }).join('');
+  return '<article class="metric specific-card" aria-label="Formazione specifica"><div class="metric-header"><h3>Formazione specifica</h3><span class="specific-total">' + fmt(result.sums.specific) + ' h registrate</span></div>' + tracks +
+    '<p class="specific-explainer">Due ritmi distinti dall’avvio: 35 h entro 90 giorni e 50 h complessive entro il termine finale. Dopo una scadenza contano solo le ore svolte entro quel termine.</p></article>';
 }
 
 function render() {
@@ -70,7 +90,6 @@ function render() {
   $('empty-state').hidden = active;
   $('download-guide').hidden = active;
   if (active) $('download-guide').open = false;
-  $('deadline-details').hidden = !active;
   $('dropzone').classList.toggle('loaded', active);
   $('upload-button-label').textContent = active ? 'Carica un altro Excel' : 'Carica Excel';
   $('metrics').innerHTML = active ? categories.map(c => card(c,result)).join('') : '';
@@ -83,15 +102,6 @@ function render() {
   $('pace-note').textContent = t.unscheduledVacation
     ? 'Ritmo su 337 giorni. Stima: ' + t.unscheduledVacation + ' giorni di ferie ancora senza date.'
     : 'Ritmo su 337 giorni. Periodi di ferie tutti impostati.';
-  const missed = result.milestones.filter(m => m.status === 'missed').length;
-  $('deadline-badge').textContent = missed ? missed + (missed === 1 ? ' scadenza non rispettata' : ' scadenze non rispettate') : '35 h + 15 h';
-  $('deadline-badge').classList.toggle('missed-badge', missed > 0);
-  $('specific-deadlines').innerHTML = active ? result.milestones.map(m => '<article class="deadline-item ' + m.status + '">' +
-    '<p class="eyebrow">' + (m.key === 'first' ? 'PRIMA TRANCHE · 70%' : 'COMPLETAMENTO · 100%') + '</p>' +
-    '<h3>' + fmt(m.goal,0) + ' ore entro il ' + dateLabel(m.date) + '</h3>' +
-    '<p class="deadline-amount">' + fmt(m.actual) + ' <span>/ ' + fmt(m.goal,0) + ' h entro il termine</span></p>' +
-    '<p class="deadline-status">' + milestoneText[m.status] + '</p>' +
-    '<p class="deadline-detail">' + (m.status === 'met' ? 'Ore completate entro la scadenza e già presenti alla data del confronto.' : m.status === 'missed' ? 'Al termine mancavano ' + fmt(m.remaining) + ' ore. I recuperi successivi non cambiano questo esito.' : 'Mancano ' + fmt(m.remaining) + ' ore; ' + (m.daysLeft ? m.daysLeft + ' giorni alla scadenza.' : 'la scadenza è oggi.')) + '</p></article>').join('') : '';
   if (!active) {
     $('months').innerHTML = '';
     $('month-totals').hidden = true;
@@ -173,7 +183,6 @@ document.addEventListener('keydown',event => { if (event.key === 'Escape') $('do
 $('clear').addEventListener('click',() => {
   generation++; workbook = null;
   $('hours-details').open = false;
-  $('deadline-details').open = false;
   $('pick-file').disabled = false;
   $('pick-file').removeAttribute('title');
   message('Dati rimossi dalla pagina.'); render();
@@ -182,8 +191,12 @@ $('clear').addEventListener('click',() => {
 $('export').addEventListener('click',() => {
   if (!workbook || !current) return;
   const number = n => String(Math.round(n*100)/100).replace('.',',');
-  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',$('as-of').value],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo annuale','Attese alla data','Scostamento','Stato']];
-  for(const c of categories) { const m=current.metrics[c.key]; rows.push([c.title,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]); }
+  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',$('as-of').value],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo','Attese alla data','Scostamento','Stato']];
+  for(const c of categories) {
+    if(c.key === 'specific') {
+      for(const m of current.specificComparisons) rows.push(['Specifica · ' + (m.key === 'first' ? '90 giorni' : 'termine finale') + ' · ' + m.date,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]);
+    } else { const m=current.metrics[c.key]; rows.push([c.title,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]); }
+  }
   rows.push([],['Mese','Servizio alla data','Generale alla data','Specifica alla data','Rendicontabili alla data','Rendicontabili tutto il file']);
   for(const m of current.months) rows.push([m.key,number(m.service),number(m.general),number(m.specific),number(m.total),number(m.all)]);
   rows.push(['TOTALE',number(current.sums.service),number(current.sums.general),number(current.sums.specific),number(current.sums.total),number(current.all.total)]);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { evaluateFormula, shiftFormula, sheetFromXml, extractRecords, readWorkbook } from '../src/workbook.js';
-import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones } from '../src/metrics.js';
+import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones, specificComparisons } from '../src/metrics.js';
 
 const require = createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES ? process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES + '/test.cjs' : import.meta.url);
 const { xml2js } = require('xml-js');
@@ -99,6 +99,28 @@ await test('Scadenze: ore nel giorno limite valide; recuperi tardivi non sanano 
   assert(specificMilestones(valid,'2027-07-17').every(m=>m.status==='met'));
   assert.equal(specificMilestones([{date:'2026-12-15',specific:50}],'2027-07-18')[1].status,'met');
   assert.equal(specificMilestones([{date:'2027-07-18',specific:50}],'2027-07-18')[1].status,'missed');
+});
+await test('Specifica: due scostamenti distinti rispetto ai ritmi dei due termini', () => {
+  const rows = [{date:'2026-11-11',specific:9},{date:'2026-11-12',specific:26}];
+  const [first,final] = specificComparisons(rows,'2026-11-11');
+  assert.equal(first.goal,35); assert.equal(final.goal,50);
+  assert.equal(first.actual,9); assert.equal(final.actual,9);
+  assert(Math.abs(first.expected-35*55/90)<1e-10);
+  assert(Math.abs(final.expected-50*55/303)<1e-10);
+  assert(Math.abs(first.delta+12.38888888888889)<1e-10);
+  assert(Math.abs(final.delta+0.075907590759)<1e-10);
+  assert(specificComparisons(rows,'2026-09-17').every(m=>m.actual===0 && m.expected===0 && m.status==='equal'));
+});
+await test('Specifica: recupero tardivo non cambia lo scostamento del primo termine', () => {
+  const rows=[{date:'2026-12-16',specific:34},{date:'2026-12-17',specific:16}];
+  const [first,final]=specificComparisons(rows,'2026-12-17');
+  assert.equal(first.actual,34); assert.equal(first.expected,35);
+  assert.equal(first.delta,-1); assert.equal(first.deadlineStatus,'missed');
+  assert.equal(final.actual,50); assert.equal(final.status,'above');
+  assert.equal(final.deadlineStatus,'met');
+  const late=specificComparisons([{date:'2027-07-18',specific:50}],'2027-09-17');
+  assert.equal(late[1].actual,0); assert.equal(late[1].expected,50);
+  assert.equal(late[1].delta,-50); assert.equal(late[1].deadlineStatus,'missed');
 });
 await test('Ferie: dati Excel mantenuti e incoerenza segnalata; scadenze non rinviate', () => {
   const records=[{date:'2026-10-01',total:5,service:5,general:0,specific:0}];
