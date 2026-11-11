@@ -1,4 +1,4 @@
-import { today, summarize } from './src/metrics.js';
+import { today, summarize, vacationDates } from './src/metrics.js?v=2';
 import { readWorkbook } from './src/workbook.js';
 
 const $ = id => document.getElementById(id);
@@ -6,7 +6,31 @@ const fmt = (n, digits = 2) => new Intl.NumberFormat('it-IT', { maximumFractionD
 const dateLabel = date => new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'));
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let workbook = null, isDemo = false, current = null, generation = 0;
+let vacations = [];
+try {
+  const saved = JSON.parse(localStorage.getItem('presenze-vacations') || '[]');
+  vacationDates(saved); vacations = saved;
+} catch {}
+for (let i = 0; i < 2; i++) {
+  $('vacation-start-' + (i + 1)).value = vacations[i]?.start || '';
+  $('vacation-end-' + (i + 1)).value = vacations[i]?.end || '';
+}
 $('as-of').value = today();
+
+function updateThemeControl() {
+  const light = document.documentElement.dataset.theme === 'light';
+  $('theme-toggle').textContent = light ? 'Tema scuro' : 'Tema chiaro';
+  $('theme-toggle').setAttribute('aria-label', light ? 'Attiva tema scuro' : 'Attiva tema chiaro');
+  $('theme-toggle').setAttribute('aria-pressed', String(light));
+  document.querySelector('meta[name="theme-color"]').content = light ? '#f5f6f2' : '#101917';
+}
+$('theme-toggle').addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('presenze-theme', theme); } catch {}
+  updateThemeControl();
+});
+updateThemeControl();
 
 const categories = [{ key: 'total', title: 'Totale ore rendicontabili', icon: '◷' }, { key: 'general', title: 'Formazione generale', icon: '↗' }, { key: 'specific', title: 'Formazione specifica', icon: '↗' }];
 const statusText = { above: 'Sopra il ritmo', below: 'Sotto il ritmo', equal: 'In pari' };
@@ -24,7 +48,7 @@ function card(category, result) {
     <div class="category">${category.title}<span class="category-symbol" aria-hidden="true">${category.icon}</span></div>
     <p class="amount">${active ? fmt(m.actual) : '—'}<span>ore</span></p>
     <p class="goal">su ${fmt(m.goal, 0)} ore ${category.key === 'total' ? 'annuali' : 'minime annuali'}</p>
-    <div class="metric-bar" role="img" aria-label="${active ? fmt(m.progress * 100, 1) + '% dell’obiettivo annuale; atteso ' + fmt(result.time.fraction * 100, 1) + '%' : 'Carica il file per visualizzare il progresso'}"><span class="actual" style="width:${active ? Math.min(100, m.progress * 100) : 0}%"></span><span class="expected" style="left:calc(${Math.min(100, result.time.fraction * 100)}% - 1px)" title="Obiettivo alla data"></span></div>
+    <div class="metric-bar" role="img" aria-label="${active ? fmt(m.progress * 100, 1) + '% dell’obiettivo annuale; atteso ' + fmt(m.expected / m.goal * 100, 1) + '%' : 'Carica il file per visualizzare il progresso'}"><span class="actual" style="width:${active ? Math.min(100, m.progress * 100) : 0}%"></span><span class="expected" style="left:calc(${Math.min(100, m.expected / m.goal * 100)}% - 1px)" title="Obiettivo alla data"></span></div>
     <div class="bar-label"><span>${active ? fmt(m.progress * 100, 1) + '% completato' : 'Nessun dato caricato'}</span><span>Attese ${fmt(m.expected)} h</span></div>
     <div class="status-line"><span class="status ${active ? m.status : 'equal'}">${active ? statusText[m.status] : 'In attesa del file'}</span><span class="delta">${active ? (m.delta >= 0 ? '+' : '−') + fmt(Math.abs(m.delta)) + ' h' : '—'}</span></div>
     <p class="remaining">${active ? (m.completed ? 'Obiettivo annuale raggiunto' : 'Mancano ' + fmt(m.remaining) + ' ore all’obiettivo annuale') : 'Il confronto apparirà dopo il caricamento'}</p>
@@ -35,7 +59,7 @@ function render() {
   const asOf = $('as-of').value;
   if (!asOf || !$('as-of').checkValidity()) return;
   let result;
-  try { result = summarize(workbook?.records ?? [], asOf); }
+  try { result = summarize(workbook?.records ?? [], asOf, vacations); }
   catch (err) { message(err.message, true); return; }
   current = result;
   $('elapsed').textContent = result.time.elapsed;
@@ -47,6 +71,17 @@ function render() {
   $('clear').disabled = !workbook;
   $('data-state').textContent = !workbook ? 'In attesa del file' : isDemo ? 'Dati di esempio' : 'Al ' + dateLabel(asOf);
   $('data-state').classList.toggle('demo', isDemo);
+  const t = result.time;
+  $('vacation-summary').textContent = `${t.activeElapsed} giorni disponibili trascorsi su ${t.activeDuration}; ${t.vacationElapsed} giorni di ferie già trascorsi.` +
+    (t.unscheduledVacation ? ` Stima: ${t.unscheduledVacation} giorni di ferie senza date, considerati ancora da fruire. Inserisci i periodi per un confronto preciso.` : ' Tutti i 14 giorni di ferie sono pianificati.');
+  const milestoneText = { met: 'Raggiunta entro il termine', missed: 'Scadenza non rispettata', pending: 'Termine ancora aperto' };
+  $('specific-deadlines').innerHTML = result.milestones.map(m => `<article class="deadline-item ${workbook ? m.status : ''}">
+    <p class="eyebrow">${m.key === 'first' ? 'PRIMA TRANCHE · 70%' : 'COMPLETAMENTO · 100%'}</p>
+    <h3>${fmt(m.goal, 0)} ore entro il ${dateLabel(m.date)}</h3>
+    <p class="deadline-amount">${workbook ? fmt(m.actual) : '—'} <span>/ ${fmt(m.goal, 0)} h entro il termine</span></p>
+    <p class="deadline-status">${workbook ? milestoneText[m.status] : 'Carica il prospetto per verificare'}</p>
+    <p class="deadline-detail">${!workbook ? (m.key === 'first' ? 'Prime 35 ore di formazione specifica.' : '50 ore cumulative: le prime 35 più le restanti 15.') : m.status === 'met' ? 'Ore completate entro la scadenza e già presenti alla data del confronto.' : m.status === 'missed' ? 'Al termine mancavano ' + fmt(m.remaining) + ' ore. I recuperi successivi non cambiano questo esito.' : 'Mancano ' + fmt(m.remaining) + ' ore; ' + (m.daysLeft ? m.daysLeft + ' giorni alla scadenza.' : 'la scadenza è oggi.')}<\/p>
+  </article>`).join('');
   if (!workbook) {
     $('months').innerHTML = '<tr><td colspan="6" class="empty-table">Carica il prospetto per vedere il riepilogo dei mesi.</td></tr>';
     $('month-totals').hidden = true;
@@ -56,6 +91,7 @@ function render() {
     return;
   }
   const warnings = [...workbook.warnings];
+  if (result.vacationConflicts) warnings.push(result.vacationConflicts + ' giornate indicate come ferie contengono ore nel file Excel. Verifica i periodi: il sito non attribuisce ore di ferie e mantiene le ore lette dal prospetto.');
   if (isDemo) warnings.unshift('Stai visualizzando dati fittizi di esempio. Carica il tuo Excel per ottenere il risultato personale.');
   if (result.futureCount) warnings.push(`${result.futureCount} giornate con ore successive alla data scelta: escluse dalle schede e incluse solo in “tutto il file”.`);
   if (result.lastEntry && result.lastEntry < asOf) warnings.push('Ultima giornata con ore: ' + dateLabel(result.lastEntry) + '. Le giornate successive non hanno ore registrate entro la data scelta; il confronto usa comunque la data selezionata.');
@@ -99,6 +135,21 @@ $('pick-file').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', e => load(e.target.files[0]));
 $('as-of').addEventListener('change', render);
 $('today').addEventListener('click', () => { $('as-of').value = today(); render(); });
+$('vacation-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const ranges = [1, 2].map(i => ({ start: $('vacation-start-' + i).value, end: $('vacation-end-' + i).value })).filter(r => r.start || r.end);
+  try { vacationDates(ranges); }
+  catch (err) { $('vacation-error').textContent = err.message; $('vacation-error').hidden = false; return; }
+  vacations = ranges;
+  try { localStorage.setItem('presenze-vacations', JSON.stringify(vacations)); } catch {}
+  $('vacation-error').hidden = true; render();
+});
+$('reset-vacations').addEventListener('click', () => {
+  vacations = [];
+  for (const i of [1, 2]) { $('vacation-start-' + i).value = ''; $('vacation-end-' + i).value = ''; }
+  try { localStorage.removeItem('presenze-vacations'); } catch {}
+  $('vacation-error').hidden = true; render();
+});
 for (const name of ['dragenter', 'dragover']) $('dropzone').addEventListener(name, e => { e.preventDefault(); $('dropzone').classList.add('dragging'); });
 $('dropzone').addEventListener('dragleave', e => { if (!$('dropzone').contains(e.relatedTarget)) $('dropzone').classList.remove('dragging'); });
 $('dropzone').addEventListener('drop', e => { e.preventDefault(); $('dropzone').classList.remove('dragging'); if (e.dataTransfer.files.length !== 1) { message('Carica un solo prospetto Excel alla volta.', true); return; } load(e.dataTransfer.files[0]); });
@@ -142,7 +193,12 @@ $('export').addEventListener('click', () => {
   rows.push([], ['Mese', 'Servizio alla data', 'Generale alla data', 'Specifica alla data', 'Rendicontabili alla data', 'Rendicontabili tutto il file']);
   for (const m of current.months) rows.push([m.key, number(m.service), number(m.general), number(m.specific), number(m.total), number(m.all)]);
   rows.push(['TOTALE', number(current.sums.service), number(current.sums.general), number(current.sums.specific), number(current.sums.total), number(current.all.total)]);
-  rows.push([], ['Metodo', 'Obiettivi ripartiti uniformemente sui 365 giorni. Formazione già inclusa nelle ore rendicontabili.']);
+  rows.push([], ['Metodo totale e generale', 'Obiettivi su 351 giorni disponibili (365 meno 14 di ferie). Formazione già inclusa nelle ore rendicontabili.'],
+    ['Giorni disponibili trascorsi', current.time.activeElapsed], ['Giorni di ferie trascorsi', current.time.vacationElapsed], ['Giorni di ferie non pianificati (assunti futuri)', current.time.unscheduledVacation]);
+  for (const period of vacations) rows.push(['Periodo ferie', period.start, period.end]);
+  rows.push([], ['Specifica: traguardo', 'Scadenza inclusa', 'Ore entro termine e data confronto', 'Ore mancanti al termine', 'Esito']);
+  for (const m of current.milestones) rows.push([m.goal + ' h cumulative', m.date, number(m.actual), number(m.remaining), { met:'Raggiunta entro il termine',missed:'Scadenza non rispettata',pending:'Termine ancora aperto' }[m.status]]);
+  if (current.vacationConflicts) rows.push(['Avviso', current.vacationConflicts + ' giornate di ferie con ore presenti nel file: verificare.']);
   for (const w of workbook.warnings) rows.push(['Avviso', w]);
   if (current.futureCount) rows.push(['Avviso', current.futureCount + ' giornate con ore future rispetto al confronto escluse dai totali alla data.']);
   if (current.lastEntry) rows.push(['Ultima giornata con ore entro il confronto', current.lastEntry]);

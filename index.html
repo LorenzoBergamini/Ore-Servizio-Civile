@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="it">
+<html lang="it" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#174e43">
   <meta name="description" content="Controlla le ore del tuo servizio civile dal prospetto Excel: formazione, totale rendicontabile e andamento alla data di oggi.">
   <title>Presenze — Il tuo servizio civile</title>
-  <link rel="stylesheet" href="./styles.css">
+  <script src="./theme.js?v=2"></script>
+  <link rel="stylesheet" href="./styles.css?v=2">
   <script src="./vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=2"></script>
 </head>
 <body>
   <a class="skip" href="#main">Vai al contenuto</a>
@@ -16,6 +17,7 @@
     <a class="brand" href="./" aria-label="Presenze, pagina iniziale"><span class="brand-icon" aria-hidden="true">p</span>presenze<span class="brand-dot">.</span></a>
     <span class="top-label">IL TUO SERVIZIO CIVILE</span>
     <span class="local-label"><span aria-hidden="true">◉</span> File elaborato sul tuo dispositivo</span>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Attiva tema chiaro">Tema chiaro</button>
   </header>
   <main id="main">
     <section class="intro">
@@ -34,9 +36,14 @@
 
     <section class="journey" aria-label="Avanzamento del periodo di servizio"><div class="journey-top"><span><strong id="elapsed">—</strong> giorni trascorsi <span class="muted">su 365</span></span><span id="days-left">— giorni alla fine</span></div><div class="journey-track"><span id="time-progress"></span></div><div class="journey-bottom"><span>18 settembre 2026</span><span id="time-percentage">— del percorso</span><span>17 settembre 2027</span></div></section>
 
+    <details class="vacation-panel"><summary><span>Ferie obbligatorie</span><span class="vacation-badge">14 giorni esclusi dal ritmo annuale</span></summary><div class="vacation-content"><p>Due settimane equivalgono a 14 giorni di calendario: il ritmo di totale e formazione generale è calcolato su <strong>351 giorni disponibili</strong>. Inserisci le date, anche in due periodi, per sospendere il ritmo durante le ferie. Non vengono attribuite ore di ferie.</p><form id="vacation-form"><fieldset><legend>Primo periodo</legend><label>Dal<input id="vacation-start-1" type="date" min="2026-09-18" max="2027-09-17"></label><label>Al (incluso)<input id="vacation-end-1" type="date" min="2026-09-18" max="2027-09-17"></label></fieldset><fieldset><legend>Secondo periodo (facoltativo)</legend><label>Dal<input id="vacation-start-2" type="date" min="2026-09-18" max="2027-09-17"></label><label>Al (incluso)<input id="vacation-end-2" type="date" min="2026-09-18" max="2027-09-17"></label></fieldset><div class="vacation-actions"><button class="secondary" type="submit">Applica periodi</button><button id="reset-vacations" class="text-button" type="button">Date non ancora definite</button></div></form><p id="vacation-error" class="form-error" role="alert" hidden></p></div></details>
+    <p id="vacation-summary" class="comparison-note vacation-summary" aria-live="polite"></p>
+
     <section class="results-heading"><div><p class="eyebrow">IL PUNTO SULLE TUE ORE</p><h2>Come sta andando?</h2></div><span class="data-pill" id="data-state">In attesa del file</span></section>
     <div class="metrics" id="metrics" aria-live="polite"></div>
-    <p class="comparison-note">Il confronto segue un ritmo uniforme sui 365 giorni, inclusa la data selezionata. Per la formazione è un riferimento indicativo: i corsi possono essere concentrati in periodi specifici.</p>
+    <p class="comparison-note">Totale e formazione generale seguono il ritmo sui 351 giorni disponibili. La specifica segue due traguardi: 35 ore entro il 90º giorno, 50 complessive entro il terzultimo mese. Il ritmo è indicativo; il rispetto dei termini è verificato separatamente qui sotto.</p>
+
+    <section class="deadline-panel" aria-labelledby="deadlines-title"><div class="section-head"><div><p class="eyebrow">FORMAZIONE SPECIFICA</p><h2 id="deadlines-title">Le due scadenze da rispettare</h2></div><span class="deadline-total">35 h + 15 h = 50 h</span></div><div id="specific-deadlines" class="deadline-grid" aria-live="polite"></div><p class="deadline-note">Il 18 settembre è contato come giorno 1: il 90º giorno è il 16 dicembre 2026. Il terzultimo mese è il 10º mese di progetto, dal 18 giugno al 17 luglio 2027. Le ferie non spostano queste scadenze. Sono valide anche ore completate in anticipo; un recupero tardivo non cancella una scadenza mancata.</p></section>
 
     <section class="detail-panel" aria-labelledby="monthly-title">
       <div class="section-head"><div><p class="eyebrow">IL DETTAGLIO</p><h2 id="monthly-title">Un mese alla volta</h2></div><button class="secondary" id="export" type="button" disabled>Esporta riepilogo CSV</button></div>
@@ -47,9 +54,9 @@
     <section class="info-grid">
       <div class="info-card"><span class="info-number">01</span><h3>Un solo totale, senza duplicati</h3><p>Le ore rendicontabili provengono dalla colonna omonima dei fogli mensili. Il foglio RIEPILOGO e le righe dei totali servono da riferimento e non vengono sommati di nuovo.</p></div>
       <div class="info-card"><span class="info-number">02</span><h3>Le regole del tuo Excel</h3><p>Il sito ricalcola le formule del modello per le singole giornate. Assenze e permessi incidono sulle ore solo se lo prevede la formula Excel. I permessi ordinari non sono inclusi nelle formule del modello ricevuto.</p></div>
-      <div class="info-card"><span class="info-number">03</span><h3>I dati restano con te</h3><p>Il file viene letto nel browser, senza inviarlo a server o salvarlo online. Alla chiusura o al ricaricamento della pagina dovrai caricarlo nuovamente.</p></div>
+      <div class="info-card"><span class="info-number">03</span><h3>I dati restano con te</h3><p>Il file viene letto nel browser, senza inviarlo a server o salvarlo online. Alla riapertura dovrai caricarlo nuovamente. Sono ricordati su questo dispositivo solo il tema e i periodi di ferie impostati.</p></div>
     </section>
-    <details class="method"><summary>Come vengono calcolati gli scostamenti?</summary><div><p><strong>Obiettivo alla data = obiettivo annuale × giorni trascorsi ÷ 365.</strong> Il 18 settembre è il giorno 1; il 17 settembre 2027 è il giorno 365. Prima dell’inizio l’obiettivo è zero, dopo la fine resta quello annuale.</p><p><strong>Scostamento = ore registrate entro la data − obiettivo alla data.</strong> Un valore positivo indica “Sopra il ritmo”, un valore negativo “Sotto il ritmo”. “In pari” indica uno scostamento arrotondato al centesimo di ora pari a zero. I confronti usano i valori completi prima dell’arrotondamento.</p><p>Obiettivi: 1.145 ore rendicontabili, 30 ore minime di formazione generale e 50 ore minime di formazione specifica. Le ultime due sono incluse nelle 1.145 ore. Il servizio effettivo è mostrato nel dettaglio, senza assegnargli un obiettivo separato. Sono escluse le date esterne al periodo di servizio; le date future rispetto al confronto compaiono solo nella colonna “tutto il file”.</p><p>Formato supportato: .xlsx del modello presenze ricevuto, con le date numeriche in colonna A, le intestazioni originali e la riga “TOTALI DA RIPORTARE”. Le formule supportate sono riferimenti di cella, somme di intervalli, parentesi e operazioni aritmetiche, incluse le formule condivise Excel. Formule diverse producono un messaggio esplicito.</p></div></details>
+    <details class="method"><summary>Come vengono calcolati gli scostamenti?</summary><div><p><strong>Totale e generale: obiettivo annuale × giorni disponibili trascorsi ÷ 351.</strong> I giorni disponibili trascorsi sono i giorni di calendario dal 18 settembre, inclusa la data selezionata, meno i giorni di ferie impostati già trascorsi. Il rapporto è limitato tra 0 e 1. I giorni di ferie non ancora assegnati sono considerati futuri: il confronto resta una stima finché non inserisci tutte le date. Le ferie non attribuiscono ore; i valori effettivi sono sempre letti dall’Excel. Eventuali ore registrate in un periodo indicato come ferie vengono segnalate per verifica.</p><p><strong>Specifica:</strong> il ritmo atteso cresce uniformemente da 0 a 35 ore nei primi 90 giorni, poi da 35 a 50 ore tra il 17 dicembre 2026 e il 17 luglio 2027; successivamente resta a 50. Le scadenze sono in giorni di calendario e non vengono rinviate dalle ferie. Il controllo dei termini usa esclusivamente le ore di specifica datate entro ciascuna scadenza e già registrate entro il confronto.</p><p><strong>Scostamento = ore registrate entro la data − obiettivo alla data.</strong> “Sopra”, “sotto” e “in pari” descrivono il ritmo, arrotondato al centesimo di ora. Una scadenza passata non rispettata resta segnalata anche se le ore vengono recuperate successivamente. Nel giorno della scadenza il termine è ancora aperto.</p><p>Obiettivi: 1.145 ore rendicontabili, 30 ore minime di formazione generale e 50 ore minime di formazione specifica. La formazione è già inclusa nelle 1.145 ore. Sono escluse le date esterne al servizio e, dal confronto, le date future. Il foglio RIEPILOGO non viene sommato una seconda volta.</p><p>Formato supportato: .xlsx del modello presenze ricevuto, con le date numeriche in colonna A, le intestazioni originali e la riga “TOTALI DA RIPORTARE”. Formule supportate: riferimenti di cella, somme di intervalli, parentesi e operazioni aritmetiche, incluse le formule condivise Excel. Formule diverse producono un messaggio esplicito.</p></div></details>
     <footer><a class="brand small-brand" href="./">presenze.</a><span>Un anno di servizio. Una visione chiara.</span><button class="text-button" id="clear" disabled type="button">Rimuovi dati</button></footer>
   </main>
 </body>

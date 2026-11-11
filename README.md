@@ -14,8 +14,12 @@ Quante ore mi mancano da fare? Il sito risponde leggendo il prospetto aggiornato
 - Esclusione delle ore future dal confronto e visualizzazione separata dei totali dell'intero file.
 - Segnalazione di date duplicate, dati non validi, mesi mancanti e differenze nei totali.
 - Interfaccia adattabile a telefono e computer.
+- Tema scuro predefinito, con selettore chiaro/scuro e preferenza ricordata.
+- Due settimane di ferie obbligatorie escluse dal ritmo annuale: 351 giorni disponibili.
+- Inserimento di uno o due periodi di ferie, per sospendere il ritmo nei giorni indicati.
+- Formazione specifica con due scadenze e verifica storica delle ore completate entro i termini.
 
-Il file è elaborato nel browser e non viene inviato a server. Non viene conservato tra un caricamento della pagina e l'altro. La libreria ZIP è inclusa nel progetto: non sono richieste CDN, chiavi API, account dei visitatori o servizi esterni per leggere il file.
+Il file è elaborato nel browser e non viene inviato a server. Non viene conservato tra un caricamento della pagina e l'altro. Tema e periodi di ferie sono ricordati tramite localStorage su questo dispositivo. Se il salvataggio locale è disabilitato, il sito continua a funzionare durante la sessione. La libreria ZIP è inclusa nel progetto: non sono richieste CDN, chiavi API, account dei visitatori o servizi esterni per leggere il file.
 
 ## Pubblicare su GitHub Pages
 
@@ -47,13 +51,28 @@ Vengono ricalcolate le formule delle colonne rilevanti, comprese quelle condivis
 
 ## Metodo di confronto
 
-Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Il giorno selezionato è incluso:
+Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le due settimane di ferie sono interpretate come **14 giorni di calendario**, per un totale di **351 giorni disponibili**. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
 
-`obiettivo alla data = obiettivo annuale × giorni trascorsi / 365`
+`giorni disponibili trascorsi = giorni di calendario trascorsi − giorni di ferie già trascorsi`
+
+`obiettivo alla data = obiettivo annuale × giorni disponibili trascorsi / 351`
+
+Il rapporto è limitato tra 0 e 1. I periodi sono inclusivi, possono essere uno o due, non devono sovrapporsi e non possono superare 14 giorni complessivi. I giorni di ferie non assegnati sono considerati ancora da fruire: questa assunzione viene mostrata come stima. Le ferie non attribuiscono ore. Le ore effettive rimangono quelle lette dall'Excel; se compaiono ore in giornate indicate come ferie, viene mostrato un avviso per verificare i periodi.
+
+La **formazione specifica** segue un ritmo diverso:
+
+| Traguardo cumulativo | Termine incluso | Convenzione |
+| --- | --- | --- |
+| 35 ore (70% di 50) | 16 dicembre 2026 | 90º giorno, contando il 18 settembre come giorno 1 |
+| 50 ore (35 + 15) | 17 luglio 2027 | Ultimo giorno del 10º mese, terzultimo mese del progetto |
+
+Il ritmo cresce uniformemente a 35 ore nei primi 90 giorni, poi da 35 a 50 entro il secondo termine e resta a 50 successivamente. Le ferie non spostano i termini. Il decimo mese va dal 18 giugno al 17 luglio 2027: si usano mesi di progetto, non mesi del calendario.
+
+La verifica di ciascuna scadenza somma le ore di specifica datate entro il relativo termine e non successive alla data del confronto. Gli esiti sono "termine ancora aperto", "raggiunta entro il termine" e "scadenza non rispettata". Nel giorno della scadenza il termine è ancora aperto. Le ore svolte in anticipo sono valide; eventuali recuperi tardivi non cancellano il mancato rispetto del termine precedente. Una scadenza può quindi risultare non rispettata anche con 50 ore complessive raggiunte successivamente.
 
 `scostamento = ore registrate entro la data − obiettivo alla data`
 
-Lo stato segue lo scostamento arrotondato al centesimo di ora. La ripartizione uniforme è una scelta per monitorare l'andamento, non una scadenza normativa per la formazione. Se i corsi seguono un calendario specifico, occorre adattare il criterio di confronto.
+Lo stato sopra / sotto / in pari segue lo scostamento arrotondato al centesimo di ora. La curva di ritmo è uno strumento indicativo per monitorare l'andamento; i vincoli temporali della specifica sono verificati separatamente. Le regole applicate sono quelle richieste per questo progetto, con le convenzioni sulle date esplicitate sopra.
 
 I dati fuori dal periodo di servizio sono esclusi. Eventuali giornate future rispetto alla data del confronto restano visibili soltanto nei totali dell'intero file. I giorni non presenti o non compilati non contribuiscono ai conteggi. La data di oggi segue il fuso `Europe/Rome`.
 
@@ -86,7 +105,7 @@ npm test -- "/percorso/del/prospetto.xlsx"
 
 Il controllo opzionale sul file originale si aspetta gli importi del prospetto di riferimento iniziale ed è utile per la prima versione, non per un prospetto successivamente aggiornato.
 
-Sono verificati calendario inclusivo e limiti, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file ricevuto sono passati tutti i 9 gruppi di controlli. Controllo della sintassi JavaScript completato. L'anteprima browser dell'ambiente di sviluppo non era disponibile: resa visiva e interazioni nel browser restano da verificare sul sito servito.
+Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 351, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 13 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
 ## Dipendenze e licenze
 

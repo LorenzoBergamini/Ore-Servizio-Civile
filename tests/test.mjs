@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { evaluateFormula, shiftFormula, sheetFromXml, extractRecords, readWorkbook } from '../src/workbook.js';
-import { calendar, metric, summarize } from '../src/metrics.js';
+import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones } from '../src/metrics.js';
 
 const require = createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES ? process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES + '/test.cjs' : import.meta.url);
 const { xml2js } = require('xml-js');
@@ -49,6 +49,62 @@ await test('Stati sopra, sotto, in pari e obiettivo raggiunto', () => {
   assert.equal(metric(25.006, 50, .5).status, 'above');
   assert.equal(metric(60, 50, 1).remaining, 0);
   assert.equal(metric(60, 50, 1).completed, true);
+});
+await test('Ferie: denominatore 351, giorni trascorsi sospesi e limiti', () => {
+  const holidays = [{start:'2026-09-18',end:'2026-09-24'},{start:'2027-08-01',end:'2027-08-07'}];
+  assert.equal(calendar('2026-11-11').activeFraction,55/351);
+  assert.equal(calendar('2026-09-24',holidays).activeElapsed,0);
+  assert.equal(calendar('2026-09-25',holidays).activeElapsed,1);
+  assert.equal(calendar('2026-11-11',holidays).vacationElapsed,7);
+  assert.equal(calendar('2027-08-07',holidays).vacationElapsed,14);
+  assert.equal(calendar('2027-09-17',holidays).activeElapsed,351);
+  assert.equal(calendar('2028-01-01',holidays).activeFraction,1);
+  assert.equal(calendar('2026-09-17',holidays).activeFraction,0);
+  assert.equal(calendar('2026-11-11').unscheduledVacation,14);
+  assert.equal(calendar('2026-11-11',holidays).unscheduledVacation,0);
+  assert.equal(vacationDates([{start:'2027-08-01',end:'2027-08-14'}]).size,14);
+  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-15'}]),/14 giorni/);
+  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-07'},{start:'2027-08-07',end:'2027-08-13'}]),/sovrapporsi/);
+  assert.throws(()=>vacationDates([{start:'2027-08-01'}]),/entrambe/);
+  assert.throws(()=>vacationDates([{start:'2026-09-17',end:'2026-09-20'}]),/servizio/);
+  assert.throws(()=>vacationDates([{start:'2027-08-07',end:'2027-08-01'}]),/fine/);
+});
+await test('Specifica: curva 70% al giorno 90 e 100% al termine del decimo mese', () => {
+  assert.equal(specificExpected('2026-09-17'),0);
+  assert.equal(specificExpected('2026-12-16'),35);
+  assert(specificExpected('2026-12-15')<35);
+  assert(specificExpected('2026-12-17')>35);
+  assert(specificExpected('2027-07-16')<50);
+  assert.equal(specificExpected('2027-07-17'),50);
+  assert.equal(specificExpected('2027-09-17'),50);
+  const result=summarize([], '2026-11-11');
+  assert(Math.abs(result.metrics.total.expected-1145*55/351)<1e-10);
+  assert(Math.abs(result.metrics.general.expected-30*55/351)<1e-10);
+  assert(Math.abs(result.metrics.specific.expected-35*55/90)<1e-10);
+});
+await test('Scadenze: ore nel giorno limite valide; recuperi tardivi non sanano il termine', () => {
+  const rows=[{date:'2026-12-16',specific:34},{date:'2026-12-17',specific:16}];
+  assert.equal(specificMilestones(rows,'2026-12-16')[0].status,'pending');
+  const late=specificMilestones(rows,'2027-07-17');
+  assert.equal(late[0].status,'missed');
+  assert.equal(late[0].actual,34);
+  assert.equal(late[1].status,'met');
+  assert.equal(late[1].actual,50);
+  const valid=[{date:'2026-12-16',specific:35},{date:'2027-07-17',specific:15}];
+  assert.equal(specificMilestones(valid,'2026-12-15')[0].actual,0);
+  assert.equal(specificMilestones(valid,'2026-12-16')[0].status,'met');
+  assert(specificMilestones(valid,'2027-07-17').every(m=>m.status==='met'));
+  assert.equal(specificMilestones([{date:'2026-12-15',specific:50}],'2027-07-18')[1].status,'met');
+  assert.equal(specificMilestones([{date:'2027-07-18',specific:50}],'2027-07-18')[1].status,'missed');
+});
+await test('Ferie: dati Excel mantenuti e incoerenza segnalata; scadenze non rinviate', () => {
+  const records=[{date:'2026-10-01',total:5,service:5,general:0,specific:0}];
+  const holidays=[{start:'2026-10-01',end:'2026-10-14'}];
+  const result=summarize(records,'2026-12-16',holidays);
+  assert.equal(result.vacationConflicts,1);
+  assert.equal(result.sums.total,5);
+  assert.equal(result.metrics.specific.expected,35);
+  assert.equal(result.time.activeElapsed,76);
 });
 await test('Formule: precedenza, parentesi, somme, riferimenti assoluti', () => {
   const get = ref => ({ E9:4, F9:2, G9:1, H9:1, E10:5 })[ref] || 0;
@@ -114,7 +170,7 @@ if (process.argv[2]) await test('File originale: 13 mesi, 365 date, totali e con
   assert.equal(data.warnings.length, 0);
   assert.equal(result.metrics.total.status, 'above');
   assert.equal(result.metrics.general.status, 'above');
-  assert.equal(result.metrics.specific.status, 'above');
+  assert.equal(result.metrics.specific.status, 'below');
   assert.equal(result.lastEntry, '2026-11-11');
   console.log(JSON.stringify({ actual:result.sums, expected:Object.fromEntries(Object.entries(result.metrics).map(([k,m])=>[k,m.expected])), delta:Object.fromEntries(Object.entries(result.metrics).map(([k,m])=>[k,m.delta])) },null,2));
 });
