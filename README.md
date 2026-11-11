@@ -18,7 +18,7 @@ Quante ore mi mancano da fare? Il sito risponde leggendo il prospetto aggiornato
 - Tabella mensile e CSV apribili dal pulsante Dettagli ore.
 - Riquadri verdi, rossi o ambra per sopra, sotto o in pari con le ore.
 - Tema scuro predefinito, con selettore chiaro/scuro e preferenza ricordata.
-- Quattro settimane di ferie obbligatorie escluse dal ritmo annuale: 337 giorni disponibili.
+- Avviso iniziale e selettore delle settimane di ferie, ricordate sul dispositivo. Valore predefinito: 4 settimane, 337 giorni disponibili.
 - Inserimento di fino a quattro periodi di ferie, per sospendere il ritmo nei giorni indicati.
 - Quattro riquadri della stessa altezza: totale, formazione specifica, formazione generale e assenze utilizzate.
 - Contatori GG PERMESSO, GG MALATTIA (15 con ore + 15 senza ore) e GG INFORTUNIO.
@@ -57,13 +57,13 @@ Vengono ricalcolate le formule delle colonne rilevanti, comprese quelle condivis
 
 ## Metodo di confronto
 
-Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le quattro settimane di ferie sono interpretate come **28 giorni di calendario**, per un totale di **337 giorni disponibili**. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
+Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le settimane di ferie sono configurabili (0–52 intere); ogni settimana equivale a **7 giorni di calendario**. Il valore iniziale di quattro settimane esclude 28 giorni, lasciandone 337. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
 
 `giorni disponibili trascorsi = giorni di calendario trascorsi − giorni di ferie già trascorsi`
 
-`obiettivo alla data = obiettivo annuale × giorni disponibili trascorsi / 337`
+`obiettivo alla data = obiettivo annuale × giorni disponibili trascorsi / (365 − settimane × 7)`
 
-Il rapporto è limitato tra 0 e 1. I periodi sono inclusivi, possono essere fino a quattro, non devono sovrapporsi e non possono superare 28 giorni complessivi. I giorni di ferie non assegnati sono considerati ancora da fruire: questa assunzione viene mostrata come stima. Le ferie non attribuiscono ore. Le ore effettive rimangono quelle lette dall'Excel; se compaiono ore in giornate indicate come ferie, viene mostrato un avviso per verificare i periodi.
+Il rapporto è limitato tra 0 e 1. I periodi sono inclusivi, possono essere fino a quattro, non devono sovrapporsi e non possono superare il numero di giorni delle settimane impostate. I giorni di ferie non assegnati sono considerati ancora da fruire: questa assunzione viene mostrata come stima. Le ferie non attribuiscono ore. Le ore effettive rimangono quelle lette dall'Excel; se compaiono ore in giornate indicate come ferie, viene mostrato un avviso per verificare i periodi.
 
 La **formazione specifica** segue un ritmo diverso:
 
@@ -121,7 +121,7 @@ npm test -- "/percorso/del/prospetto.xlsx"
 
 Il controllo opzionale sul file originale si aspetta gli importi del prospetto di riferimento iniziale ed è utile per la prima versione, non per un prospetto successivamente aggiornato.
 
-Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 20 gruppi di controlli. Controllo della sintassi JavaScript completato.
+Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 21 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
 Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 29 giorni, applicazione di 28 giorni di ferie e segnalazione di una scadenza passata non rispettata.
 
@@ -130,3 +130,5 @@ Per controllare manualmente il layout mobile, apri `tests/responsive.html` sul s
 ## Dipendenze e licenze
 
 `vendor/jszip.min.js` include JSZip 3.10.1, distribuito secondo le licenze MIT o GPLv3. Il progetto usa l'opzione MIT; il testo completo è in `vendor/JSZip-LICENSE.md`. Le dipendenze npm sono richieste soltanto per i test; il sito usa i file locali inclusi.
+
+Il selettore aggiorna immediatamente totale e generale, le note e il CSV. Le scadenze della specifica non cambiano. Una riduzione incompatibile con periodi già salvati viene rifiutata senza cancellare le date; correggere prima i periodi.

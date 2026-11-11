@@ -1,7 +1,13 @@
 export const START = '2026-09-18';
 export const END = '2027-09-17';
 export const GOALS = { total: 1145, general: 30, specific: 50 };
+export const DEFAULT_VACATION_WEEKS = 4;
 export const VACATION_DAYS = 28;
+
+export function vacationDays(weeks = DEFAULT_VACATION_WEEKS) {
+  if (!Number.isInteger(weeks) || weeks < 0 || weeks > 52) throw new Error('Indica un numero intero di settimane tra 0 e 52.');
+  return weeks * 7;
+}
 export const ABSENCE_LIMITS = { permits: 20, sickWithHours: 15, sickWithoutHours: 15, injuryMonths: 5 };
 export const SPECIFIC_DEADLINES = [
   { key: 'first', goal: 35, date: '2026-12-16', label: '70% entro il 90º giorno' },
@@ -21,7 +27,8 @@ export function today() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
-export function vacationDates(ranges = []) {
+export function vacationDates(ranges = [], weeks = DEFAULT_VACATION_WEEKS) {
+  const days = vacationDays(weeks);
   if (!Array.isArray(ranges) || ranges.length > 4) throw new Error('Indica al massimo quattro periodi di ferie.');
   const dates = new Set();
   for (const range of ranges) {
@@ -29,27 +36,28 @@ export function vacationDates(ranges = []) {
     if (!range.start || !range.end) throw new Error('Completa entrambe le date del periodo di ferie.');
     const start = dateDay(range.start), end = dateDay(range.end);
     if (range.start < START || range.end > END || end < start) throw new Error('Le ferie devono ricadere nel servizio, con la fine successiva o uguale all’inizio.');
-    if (end - start + 1 > VACATION_DAYS) throw new Error(`Le ferie obbligatorie possono coprire al massimo ${VACATION_DAYS} giorni di calendario.`);
+    if (end - start + 1 > days) throw new Error(`Le ferie obbligatorie possono coprire al massimo ${days} giorni di calendario.`);
     for (let day = start; day <= end; day++) {
       if (dates.has(day)) throw new Error('I periodi di ferie non possono sovrapporsi.');
       dates.add(day);
-      if (dates.size > VACATION_DAYS) throw new Error(`I periodi superano i ${VACATION_DAYS} giorni di ferie obbligatorie.`);
+      if (dates.size > days) throw new Error(`I periodi superano i ${days} giorni di ferie obbligatorie.`);
     }
   }
   return dates;
 }
 
-export function calendar(asOf, vacations = []) {
+export function calendar(asOf, vacations = [], weeks = DEFAULT_VACATION_WEEKS) {
+  const days = vacationDays(weeks);
   const start = dateDay(START), end = dateDay(END), day = dateDay(asOf);
   const duration = end - start + 1;
   const elapsed = Math.max(0, Math.min(duration, day - start + 1));
-  const dates = vacationDates(vacations);
+  const dates = vacationDates(vacations, weeks);
   const vacationElapsed = [...dates].filter(d => d <= day).length;
-  const activeDuration = duration - VACATION_DAYS;
+  const activeDuration = duration - days;
   const activeElapsed = Math.max(0, Math.min(activeDuration, elapsed - vacationElapsed));
   return { duration, elapsed, remaining: duration - elapsed, fraction: elapsed / duration, day,
     activeDuration, activeElapsed, activeFraction: activeElapsed / activeDuration,
-    vacationElapsed, scheduledVacation: dates.size, unscheduledVacation: VACATION_DAYS - dates.size, vacationDates: dates };
+    vacationElapsed, scheduledVacation: dates.size, vacationWeeks: weeks, vacationDays: days, unscheduledVacation: days - dates.size, vacationDates: dates };
 }
 
 export function specificExpected(asOf) {
@@ -118,8 +126,8 @@ export function absenceSummary(records, asOf) {
   };
 }
 
-export function summarize(records, asOf, vacations = []) {
-  const time = calendar(asOf, vacations);
+export function summarize(records, asOf, vacations = [], weeks = DEFAULT_VACATION_WEEKS) {
+  const time = calendar(asOf, vacations, weeks);
   const sums = { total: 0, general: 0, specific: 0, service: 0 };
   const all = { ...sums };
   const months = new Map();

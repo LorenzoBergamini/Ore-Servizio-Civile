@@ -72,6 +72,26 @@ await test('Ferie: quattro settimane, denominatore 337, giorni trascorsi e limit
   assert.throws(()=>vacationDates([{start:'2026-09-17',end:'2026-09-20'}]),/servizio/);
   assert.throws(()=>vacationDates([{start:'2027-08-07',end:'2027-08-01'}]),/fine/);
 });
+await test('Ferie configurabili: ricalcolo, zero settimane e periodi incompatibili', () => {
+  for (const weeks of [0,2,4,6,52]) {
+    const t = calendar('2026-11-11',[],weeks);
+    assert.equal(t.activeDuration,365-weeks*7);
+    assert.equal(t.unscheduledVacation,weeks*7);
+    assert.equal(calendar('2026-09-17',[],weeks).activeFraction,0);
+    assert.equal(calendar('2027-09-17',[],weeks).activeFraction,1);
+  }
+  const two = summarize([], '2026-11-11', [], 2);
+  const four = summarize([], '2026-11-11', [], 4);
+  assert.equal(two.metrics.total.expected,1145*55/351);
+  assert(four.metrics.total.expected > two.metrics.total.expected);
+  assert.deepEqual(two.specificComparisons,four.specificComparisons);
+  assert.throws(()=>calendar('2026-11-11',[],2.5),/intero/);
+  assert.throws(()=>calendar('2026-11-11',[],-1),/intero/);
+  assert.throws(()=>calendar('2026-11-11',[],53),/intero/);
+  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-15'}],2),/14 giorni/);
+  assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-01'}],0),/0 giorni/);
+  assert.equal(calendar('2026-11-11',[{start:'2026-09-18',end:'2026-09-24'}],2).activeFraction,48/351);
+});
 await test('Specifica: curva 70% al giorno 90 e 100% al termine del decimo mese', () => {
   assert.equal(specificExpected('2026-09-17'),0);
   assert.equal(specificExpected('2026-12-16'),35);
