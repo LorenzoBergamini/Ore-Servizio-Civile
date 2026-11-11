@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174e43">
+  <meta name="description" content="Controlla le ore del tuo servizio civile dal prospetto Excel: formazione, totale rendicontabile e andamento alla data di oggi.">
+  <title>Presenze — Il tuo servizio civile</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./vendor/jszip.min.js" defer></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Vai al contenuto</a>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Presenze, pagina iniziale"><span class="brand-icon" aria-hidden="true">p</span>presenze<span class="brand-dot">.</span></a>
+    <span class="top-label">IL TUO SERVIZIO CIVILE</span>
+    <span class="local-label"><span aria-hidden="true">◉</span> File elaborato sul tuo dispositivo</span>
+  </header>
+  <main id="main">
+    <section class="intro">
+      <div><p class="eyebrow">18 SET 2026 — 17 SET 2027</p><h1>Ogni ora conta.</h1><p class="subtitle">Il tuo percorso, dalla prima presenza all’ultimo giorno.</p></div>
+      <div class="date-control"><label for="as-of">Confronta le ore al</label><div><input id="as-of" type="date" required><button id="today" class="text-button" type="button">Oggi</button></div></div>
+    </section>
+
+    <section class="upload-panel" id="dropzone" aria-labelledby="upload-title">
+      <div class="upload-icon" aria-hidden="true"><svg width="26" height="28" viewBox="0 0 26 28" fill="none"><path d="M6 2h9l6 6v17H6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 2v7h6M10 15h7M10 19h7" stroke="currentColor" stroke-width="1.6"/></svg></div>
+      <div class="upload-copy"><h2 id="upload-title">Il tuo prospetto, tutto qui.</h2><p id="file-label">Trascina il file .xlsx o scegli dal dispositivo.</p><p class="small" id="file-detail">Fogli mensili del modello presenze · massimo 10 MB</p></div>
+      <div class="upload-actions"><button class="primary" id="pick-file" type="button">Carica Excel <span aria-hidden="true">↗</span></button><button class="text-button" id="demo" type="button">Prova un esempio</button></div>
+      <input id="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </section>
+    <p id="message" role="status" aria-live="polite" hidden></p>
+    <div id="alerts" aria-live="polite"></div>
+
+    <section class="journey" aria-label="Avanzamento del periodo di servizio"><div class="journey-top"><span><strong id="elapsed">—</strong> giorni trascorsi <span class="muted">su 365</span></span><span id="days-left">— giorni alla fine</span></div><div class="journey-track"><span id="time-progress"></span></div><div class="journey-bottom"><span>18 settembre 2026</span><span id="time-percentage">— del percorso</span><span>17 settembre 2027</span></div></section>
+
+    <section class="results-heading"><div><p class="eyebrow">IL PUNTO SULLE TUE ORE</p><h2>Come sta andando?</h2></div><span class="data-pill" id="data-state">In attesa del file</span></section>
+    <div class="metrics" id="metrics" aria-live="polite"></div>
+    <p class="comparison-note">Il confronto segue un ritmo uniforme sui 365 giorni, inclusa la data selezionata. Per la formazione è un riferimento indicativo: i corsi possono essere concentrati in periodi specifici.</p>
+
+    <section class="detail-panel" aria-labelledby="monthly-title">
+      <div class="section-head"><div><p class="eyebrow">IL DETTAGLIO</p><h2 id="monthly-title">Un mese alla volta</h2></div><button class="secondary" id="export" type="button" disabled>Esporta riepilogo CSV</button></div>
+      <div class="table-scroll"><table><caption class="sr-only">Ore mensili nel periodo di servizio, filtrate alla data selezionata, e ore complessive nel file.</caption><thead><tr><th scope="col">Mese</th><th scope="col">Servizio</th><th scope="col">Form. generale</th><th scope="col">Form. specifica</th><th scope="col">Rendicontabili<br><span>alla data scelta</span></th><th scope="col">Rendicontabili<br><span>tutto il file</span></th></tr></thead><tbody id="months"><tr><td colspan="6" class="empty-table">Carica il prospetto per vedere il riepilogo dei mesi.</td></tr></tbody><tfoot id="month-totals" hidden></tfoot></table></div>
+      <div class="table-foot"><span id="last-entry">Le ore di formazione sono già comprese nelle ore rendicontabili.</span><span id="all-file"></span></div>
+    </section>
+
+    <section class="info-grid">
+      <div class="info-card"><span class="info-number">01</span><h3>Un solo totale, senza duplicati</h3><p>Le ore rendicontabili provengono dalla colonna omonima dei fogli mensili. Il foglio RIEPILOGO e le righe dei totali servono da riferimento e non vengono sommati di nuovo.</p></div>
+      <div class="info-card"><span class="info-number">02</span><h3>Le regole del tuo Excel</h3><p>Il sito ricalcola le formule del modello per le singole giornate. Assenze e permessi incidono sulle ore solo se lo prevede la formula Excel. I permessi ordinari non sono inclusi nelle formule del modello ricevuto.</p></div>
+      <div class="info-card"><span class="info-number">03</span><h3>I dati restano con te</h3><p>Il file viene letto nel browser, senza inviarlo a server o salvarlo online. Alla chiusura o al ricaricamento della pagina dovrai caricarlo nuovamente.</p></div>
+    </section>
+    <details class="method"><summary>Come vengono calcolati gli scostamenti?</summary><div><p><strong>Obiettivo alla data = obiettivo annuale × giorni trascorsi ÷ 365.</strong> Il 18 settembre è il giorno 1; il 17 settembre 2027 è il giorno 365. Prima dell’inizio l’obiettivo è zero, dopo la fine resta quello annuale.</p><p><strong>Scostamento = ore registrate entro la data − obiettivo alla data.</strong> Un valore positivo indica “Sopra il ritmo”, un valore negativo “Sotto il ritmo”. “In pari” indica uno scostamento arrotondato al centesimo di ora pari a zero. I confronti usano i valori completi prima dell’arrotondamento.</p><p>Obiettivi: 1.145 ore rendicontabili, 30 ore minime di formazione generale e 50 ore minime di formazione specifica. Le ultime due sono incluse nelle 1.145 ore. Il servizio effettivo è mostrato nel dettaglio, senza assegnargli un obiettivo separato. Sono escluse le date esterne al periodo di servizio; le date future rispetto al confronto compaiono solo nella colonna “tutto il file”.</p><p>Formato supportato: .xlsx del modello presenze ricevuto, con le date numeriche in colonna A, le intestazioni originali e la riga “TOTALI DA RIPORTARE”. Le formule supportate sono riferimenti di cella, somme di intervalli, parentesi e operazioni aritmetiche, incluse le formule condivise Excel. Formule diverse producono un messaggio esplicito.</p></div></details>
+    <footer><a class="brand small-brand" href="./">presenze.</a><span>Un anno di servizio. Una visione chiara.</span><button class="text-button" id="clear" disabled type="button">Rimuovi dati</button></footer>
+  </main>
+</body>
+</html>

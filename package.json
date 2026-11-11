@@ -1,0 +1,8 @@
+{
+  "name": "ore-servizio-civile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tests/test.mjs" },
+  "devDependencies": { "xml-js": "1.6.11", "jszip": "3.10.1" }
+}
