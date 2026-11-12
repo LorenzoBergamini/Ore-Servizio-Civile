@@ -204,7 +204,12 @@ function getAsOf() {
     return null;
   }
 }
-$('as-of').addEventListener('input', () => $('as-of').setCustomValidity(''));
+$('as-of').addEventListener('input', () => {
+  $('as-of').setCustomValidity('');
+  if ($('as-of').value.length !== 10) return;
+  const iso = getAsOf();
+  if (iso) { $('as-of-picker').value = iso; render(); }
+});
 $('as-of').addEventListener('change', () => {
   const iso = getAsOf();
   if (!iso) { $('as-of').reportValidity(); return; }
