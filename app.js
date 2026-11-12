@@ -1,4 +1,4 @@
-import { today, displayDate, parseDisplayDate, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=8';
+import { today, displayDate, parseDisplayDate, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=9';
 import { readWorkbook } from './src/workbook.js?v=6';
 
 const $ = id => document.getElementById(id);
