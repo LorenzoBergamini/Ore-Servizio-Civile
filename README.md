@@ -57,7 +57,7 @@ Vengono ricalcolate le formule delle colonne rilevanti, comprese quelle condivis
 
 ## Metodo di confronto
 
-Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le settimane di ferie sono configurabili (0–52 intere); ogni settimana equivale a **7 giorni di calendario**. Il valore iniziale di quattro settimane esclude 28 giorni, lasciandone 337. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
+Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le settimane di ferie sono configurabili (0–10 intere); ogni settimana equivale a **7 giorni di calendario**. Il valore iniziale di quattro settimane esclude 28 giorni, lasciandone 337. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
 
 `giorni disponibili trascorsi = giorni di calendario trascorsi − giorni di ferie già trascorsi`
 
@@ -121,7 +121,7 @@ npm test -- "/percorso/del/prospetto.xlsx"
 
 Il controllo opzionale sul file originale si aspetta gli importi del prospetto di riferimento iniziale ed è utile per la prima versione, non per un prospetto successivamente aggiornato.
 
-Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 21 gruppi di controlli. Controllo della sintassi JavaScript completato.
+Sono verificati calendario inclusivo e limiti, ferie trascorse, denominatore 337, periodi sovrapposti o non validi, andamento della specifica, inclusione dei giorni limite, recuperi tardivi, ore in anticipo, date future, tre stati di confronto, soglie annuali, formule condivise, ricalcolo di cache obsolete, somme, duplicati, assenze, dati non numerici e importazione `.xlsx`. Sul file di riferimento sono passati tutti i 22 gruppi di controlli. Controllo della sintassi JavaScript completato.
 
 Sul sito pubblicato sono stati verificati anche caricamento del prospetto originale nel browser, correttezza dei risultati, selettore dei temi, rifiuto di un periodo di ferie di 29 giorni, applicazione di 28 giorni di ferie e segnalazione di una scadenza passata non rispettata.
 
@@ -132,3 +132,5 @@ Per controllare manualmente il layout mobile, apri `tests/responsive.html` sul s
 `vendor/jszip.min.js` include JSZip 3.10.1, distribuito secondo le licenze MIT o GPLv3. Il progetto usa l'opzione MIT; il testo completo è in `vendor/JSZip-LICENSE.md`. Le dipendenze npm sono richieste soltanto per i test; il sito usa i file locali inclusi.
 
 Il selettore aggiorna immediatamente totale e generale, le note e il CSV. Le scadenze della specifica non cambiano. Una riduzione incompatibile con periodi già salvati viene rifiutata senza cancellare le date; correggere prima i periodi.
+
+La data di confronto è sempre visualizzata e inserita come gg/mm/aaaa, indipendentemente dalla lingua del browser. Il calendario e il tasto Oggi restano disponibili. Internamente i calcoli usano date ISO; il CSV mostra la data di confronto in formato italiano.

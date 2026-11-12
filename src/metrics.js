@@ -5,7 +5,7 @@ export const DEFAULT_VACATION_WEEKS = 4;
 export const VACATION_DAYS = 28;
 
 export function vacationDays(weeks = DEFAULT_VACATION_WEEKS) {
-  if (!Number.isInteger(weeks) || weeks < 0 || weeks > 52) throw new Error('Indica un numero intero di settimane tra 0 e 52.');
+  if (!Number.isInteger(weeks) || weeks < 0 || weeks > 10) throw new Error('Indica un numero intero di settimane tra 0 e 10.');
   return weeks * 7;
 }
 export const ABSENCE_LIMITS = { permits: 20, sickWithHours: 15, sickWithoutHours: 15, injuryMonths: 5 };
@@ -20,6 +20,19 @@ export function dateDay(value) {
   const result = Date.parse(value + 'T00:00:00Z');
   if (!Number.isFinite(result) || new Date(result).toISOString().slice(0, 10) !== value) throw new Error('Data non valida.');
   return Math.floor(result / DAY);
+}
+
+export function displayDate(iso) {
+  dateDay(iso);
+  return iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4);
+}
+
+export function parseDisplayDate(value) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) throw new Error('Inserisci la data nel formato gg/mm/aaaa.');
+  const iso = match[3] + '-' + match[2] + '-' + match[1];
+  dateDay(iso);
+  return iso;
 }
 
 export function today() {

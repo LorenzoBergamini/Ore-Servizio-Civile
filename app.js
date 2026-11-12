@@ -1,4 +1,4 @@
-import { today, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=7';
+import { today, displayDate, parseDisplayDate, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=8';
 import { readWorkbook } from './src/workbook.js?v=6';
 
 const $ = id => document.getElementById(id);
@@ -11,7 +11,7 @@ try {
   const savedWeeks = localStorage.getItem('presenze-vacation-weeks');
   if (savedWeeks !== null) { const parsed = Number(savedWeeks); vacationDays(parsed); vacationWeeks = parsed; }
 } catch {}
-$('vacation-weeks').innerHTML = Array.from({length:53}, (_,i) => '<option value="' + i + '">' + i + (i === 1 ? ' settimana' : ' settimane') + '</option>').join('');
+$('vacation-weeks').innerHTML = Array.from({length:11}, (_,i) => '<option value="' + i + '">' + i + (i === 1 ? ' settimana' : ' settimane') + '</option>').join('');
 $('vacation-weeks').value = String(vacationWeeks);
 try {
   const saved = JSON.parse(localStorage.getItem('presenze-vacations') || '[]');
@@ -22,7 +22,7 @@ for (let i = 0; i < 4; i++) {
   $('vacation-start-' + (i + 1)).value = vacations[i]?.start || '';
   $('vacation-end-' + (i + 1)).value = vacations[i]?.end || '';
 }
-$('as-of').value = today();
+setAsOf(today());
 
 function updateThemeControl() {
   const light = document.documentElement.dataset.theme === 'light';
@@ -69,7 +69,7 @@ function specificCard(result) {
   const tracks = result.specificComparisons.map(m => {
     const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
     const label = m.key === 'first' ? 'Entro 90 giorni · 70%' : 'Entro il terzultimo mese · 100%';
-    const deadlinePassed = $('as-of').value > m.date;
+    const deadlinePassed = getAsOf() > m.date;
     const note = m.deadlineStatus === 'met' ? 'Scadenza rispettata' : m.deadlineStatus === 'missed'
       ? 'Scadenza non rispettata: mancavano ' + fmt(m.remaining) + ' h.'
       : 'Mancano ' + fmt(m.remaining) + ' h al traguardo' + (m.daysLeft ? ' · ' + m.daysLeft + ' giorni' : ' · scadenza oggi');
@@ -107,7 +107,7 @@ function absenceCard(result) {
 }
 
 function render() {
-  const asOf = $('as-of').value;
+  const asOf = getAsOf();
   if (!asOf || !$('as-of').checkValidity()) return;
   let result;
   try { result = summarize(workbook?.records ?? [], asOf, vacations, vacationWeeks); }
@@ -189,8 +189,36 @@ async function load(file) {
 
 $('pick-file').addEventListener('click',() => $('file').click());
 $('file').addEventListener('change',event => load(event.target.files[0]));
-$('as-of').addEventListener('change',render);
-$('today').addEventListener('click',() => { $('as-of').value = today(); render(); });
+function setAsOf(iso) {
+  $('as-of').value = displayDate(iso);
+  $('as-of-picker').value = iso;
+  $('as-of').setCustomValidity('');
+}
+function getAsOf() {
+  try {
+    const iso = parseDisplayDate($('as-of').value);
+    $('as-of').setCustomValidity('');
+    return iso;
+  } catch {
+    $('as-of').setCustomValidity('Inserisci una data valida nel formato gg/mm/aaaa.');
+    return null;
+  }
+}
+$('as-of').addEventListener('input', () => $('as-of').setCustomValidity(''));
+$('as-of').addEventListener('change', () => {
+  const iso = getAsOf();
+  if (!iso) { $('as-of').reportValidity(); return; }
+  $('as-of-picker').value = iso;
+  render();
+});
+$('open-calendar').addEventListener('click', () => {
+  if (typeof $('as-of-picker').showPicker === 'function') $('as-of-picker').showPicker();
+  else { $('as-of').focus(); $('as-of').select(); }
+});
+$('as-of-picker').addEventListener('change', () => {
+  if ($('as-of-picker').value) { setAsOf($('as-of-picker').value); render(); }
+});
+$('today').addEventListener('click',() => { setAsOf(today()); render(); });
 $('vacation-weeks').addEventListener('change', () => {
   const next = Number($('vacation-weeks').value);
   try { vacationDates(vacations, next); }
@@ -240,7 +268,7 @@ $('clear').addEventListener('click',() => {
 $('export').addEventListener('click',() => {
   if (!workbook || !current) return;
   const number = n => String(Math.round(n*100)/100).replace('.',',');
-  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',$('as-of').value],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo','Attese alla data','Scostamento','Stato']];
+  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',displayDate(getAsOf())],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo','Attese alla data','Scostamento','Stato']];
   for(const c of categories) {
     if(c.key === 'specific') {
       for(const m of current.specificComparisons) rows.push(['Specifica · ' + (m.key === 'first' ? '90 giorni' : 'termine finale') + ' · ' + m.date,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]);
@@ -272,7 +300,7 @@ $('export').addEventListener('click',() => {
   };
   const csv='\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n');
   const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  const a=document.createElement('a'); a.href=url; a.download='riepilogo-servizio-civile-' + $('as-of').value + '.csv'; a.click();
+  const a=document.createElement('a'); a.href=url; a.download='riepilogo-servizio-civile-' + getAsOf() + '.csv'; a.click();
   setTimeout(() => URL.revokeObjectURL(url),1000);
 });
 render();

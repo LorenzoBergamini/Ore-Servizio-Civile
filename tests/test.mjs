@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { evaluateFormula, shiftFormula, sheetFromXml, extractRecords, readWorkbook } from '../src/workbook.js';
-import { calendar, metric, summarize, vacationDates, specificExpected, specificMilestones, specificComparisons, absenceSummary, addCalendarMonths } from '../src/metrics.js';
+import { calendar, displayDate, parseDisplayDate, metric, summarize, vacationDates, specificExpected, specificMilestones, specificComparisons, absenceSummary, addCalendarMonths } from '../src/metrics.js';
 
 const require = createRequire(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES ? process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES + '/test.cjs' : import.meta.url);
 const { xml2js } = require('xml-js');
@@ -73,7 +73,7 @@ await test('Ferie: quattro settimane, denominatore 337, giorni trascorsi e limit
   assert.throws(()=>vacationDates([{start:'2027-08-07',end:'2027-08-01'}]),/fine/);
 });
 await test('Ferie configurabili: ricalcolo, zero settimane e periodi incompatibili', () => {
-  for (const weeks of [0,2,4,6,52]) {
+  for (const weeks of [0,2,4,6,10]) {
     const t = calendar('2026-11-11',[],weeks);
     assert.equal(t.activeDuration,365-weeks*7);
     assert.equal(t.unscheduledVacation,weeks*7);
@@ -87,10 +87,17 @@ await test('Ferie configurabili: ricalcolo, zero settimane e periodi incompatibi
   assert.deepEqual(two.specificComparisons,four.specificComparisons);
   assert.throws(()=>calendar('2026-11-11',[],2.5),/intero/);
   assert.throws(()=>calendar('2026-11-11',[],-1),/intero/);
-  assert.throws(()=>calendar('2026-11-11',[],53),/intero/);
+  assert.throws(()=>calendar('2026-11-11',[],11),/intero/);
   assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-15'}],2),/14 giorni/);
   assert.throws(()=>vacationDates([{start:'2027-08-01',end:'2027-08-01'}],0),/0 giorni/);
   assert.equal(calendar('2026-11-11',[{start:'2026-09-18',end:'2026-09-24'}],2).activeFraction,48/351);
+});
+await test('Date italiane: giorno/mese/anno e giorni non validi', () => {
+  assert.equal(parseDisplayDate('12/11/2026'),'2026-11-12');
+  assert.equal(displayDate('2026-11-12'),'12/11/2026');
+  assert.equal(parseDisplayDate('03/04/2027'),'2027-04-03');
+  assert.equal(parseDisplayDate('29/02/2028'),'2028-02-29');
+  for (const value of ['31/04/2027','29/02/2027','12/31/2026','2026-11-12','']) assert.throws(()=>parseDisplayDate(value));
 });
 await test('Specifica: curva 70% al giorno 90 e 100% al termine del decimo mese', () => {
   assert.equal(specificExpected('2026-09-17'),0);

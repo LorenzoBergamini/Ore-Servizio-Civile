@@ -7,9 +7,9 @@
   <meta name="description" content="Ore reali e attese del servizio civile, con ferie e scadenze della formazione specifica. Elaborazione Excel sul tuo dispositivo.">
   <title>Presenze — Il tuo servizio civile</title>
   <script src="./theme.js?v=2"></script>
-  <link rel="stylesheet" href="./styles.css?v=7">
+  <link rel="stylesheet" href="./styles.css?v=8">
   <script src="./vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js?v=7"></script>
+  <script type="module" src="./app.js?v=8"></script>
 </head>
 <body>
   <a class="skip" href="#main">Vai al contenuto</a>
@@ -28,7 +28,7 @@
     <section class="importbar" id="dropzone" aria-label="Caricamento e data di confronto">
       <div class="upload-control"><button class="primary" id="pick-file" type="button"><svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 12V2m-4 4 4-4 4 4M3 11v5h12v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="upload-button-label">Carica Excel</span></button><input id="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
       <details class="download-guide" id="download-guide"><summary>Come scaricarlo <span aria-hidden="true">?</span></summary><div class="guide-content"><h2>Scarica il tuo prospetto</h2><ol><li>Accedi alla tua <strong>cartella condivisa</strong>.</li><li>Trova il file Excel <strong>modello_PROSPETTO PRESENZE…</strong> e apri il menu <strong>⋯</strong> accanto al nome.</li><li>Premi <strong>Download</strong>, come nell’immagine. Poi usa “Carica Excel” qui sul sito.</li></ol><img src="./assets/download-guide.png" alt="Nella cartella condivisa, apri i tre puntini del file Excel e scegli Download dal menu." width="675" height="361" loading="lazy"><p>Formato .xlsx · massimo 10 MB. Puoi anche trascinare il file sulla barra.</p></div></details>
-      <div class="date-control"><label for="as-of">Confronta al</label><div><input id="as-of" type="date" required><button id="today" class="text-button" type="button">Oggi</button></div></div>
+      <div class="date-control"><label for="as-of">Confronta al</label><div><span class="date-entry"><input id="as-of" type="text" inputmode="numeric" placeholder="gg/mm/aaaa" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" maxlength="10" aria-label="Confronta al, formato giorno/mese/anno" required><button id="open-calendar" type="button" aria-label="Scegli la data dal calendario"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 2v4M15 2v4M3 8h14M3 4h14v13H3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button><input id="as-of-picker" type="date" class="calendar-picker" tabindex="-1" aria-hidden="true"></span><button id="today" class="text-button" type="button">Oggi</button></div></div>
     </section>
     <p id="message" role="status" aria-live="polite" class="sr-only" hidden></p>
     <p class="empty-state" id="empty-state">Carica il prospetto .xlsx: qui vedrai subito quante ore hai in più o in meno rispetto al ritmo atteso.</p>
