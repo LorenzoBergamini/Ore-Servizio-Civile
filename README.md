@@ -134,3 +134,5 @@ Per controllare manualmente il layout mobile, apri `tests/responsive.html` sul s
 Il selettore aggiorna immediatamente totale e generale, le note e il CSV. Le scadenze della specifica non cambiano. Una riduzione incompatibile con periodi già salvati viene rifiutata senza cancellare le date; correggere prima i periodi.
 
 La data di confronto è sempre visualizzata e inserita come gg/mm/aaaa, indipendentemente dalla lingua del browser. Il calendario e il tasto Oggi restano disponibili. Internamente i calcoli usano date ISO; il CSV mostra la data di confronto in formato italiano.
+
+Barre ore: scala fissa da zero all’obiettivo, punto per le ore reali e tratteggio per quelle attese. Il segmento di scostamento è rosso sotto il ritmo, verde sopra, ambra in pari. Due barre nella specifica, rispettivamente su 35 e 50 ore. Nessun allungamento artificiale dei piccoli scostamenti; gli eventuali superamenti dell’obiettivo sono indicati separatamente.

@@ -51,6 +51,21 @@ function message(text, error = false) {
   $('message').setAttribute('role', error ? 'alert' : 'status');
 }
 
+function hoursBar(m) {
+  const percent = n => Math.max(0, Math.min(100, n / m.goal * 100));
+  const real = percent(m.actual), expected = percent(m.expected);
+  const common = Math.min(real, expected), gap = Math.abs(real - expected);
+  const description = 'Reali ' + fmt(m.actual) + ' ore; attese ' + fmt(m.expected) + ' ore; obiettivo ' + fmt(m.goal) + ' ore. ' + statusText[m.status] + '.';
+  const extra = m.actual > m.goal ? '<span class="hours-overflow">+' + fmt(m.actual - m.goal) + ' h oltre obiettivo</span>' : '';
+  return '<div class="hours-visual ' + m.status + '" role="img" aria-label="' + description + '">' +
+    '<div class="hours-legend" aria-hidden="true"><span><i class="legend-real"></i>Reali</span><span><i class="legend-expected"></i>Attese</span></div>' +
+    '<div class="hours-rail" aria-hidden="true"><span class="hours-common" style="width:' + common + '%"></span>' +
+    '<span class="hours-gap" style="left:' + common + '%;width:' + gap + '%"></span>' +
+    '<span class="hours-expected" style="left:' + expected + '%"></span>' +
+    '<span class="hours-real" style="left:' + real + '%"></span></div>' +
+    '<div class="hours-scale" aria-hidden="true"><span>0 h</span><span>' + fmt(m.goal,0) + ' h</span></div>' + extra + '</div>';
+}
+
 function card(category, result) {
   if (category.key === 'specific') return specificCard(result);
   const m = result.metrics[category.key];
@@ -60,7 +75,7 @@ function card(category, result) {
     '<div class="metric-header"><h3>' + category.title + '</h3><span class="status">' + shortStatus[m.status] + '</span></div>' +
     '<p class="difference" aria-label="Scostamento: ' + delta + ' ore"><span>' + delta + '</span><span class="unit">h</span></p>' +
     '<div class="comparison"><span>Reali<strong>' + fmt(m.actual) + ' h</strong></span><span>Attese<strong>' + fmt(m.expected) + ' h</strong></span></div>' +
-    '<p class="metric-target">Obiettivo ' + fmt(m.goal,0) + ' h · ' + (m.completed ? 'raggiunto' : 'mancano ' + fmt(m.remaining) + ' h') + '</p>' +
+    hoursBar(m) + '<p class="metric-target">Obiettivo ' + fmt(m.goal,0) + ' h · ' + (m.completed ? 'raggiunto' : 'mancano ' + fmt(m.remaining) + ' h') + '</p>' +
     (late ? '<p class="late-warning">Una scadenza della specifica non è stata rispettata.</p>' : '') +
     '</article>';
 }
@@ -78,7 +93,7 @@ function specificCard(result) {
       '<p class="track-deadline">' + dateLabel(m.date) + ' · obiettivo ' + fmt(m.goal,0) + ' h</p>' +
       '<div class="track-values"><p class="difference" aria-label="Scostamento: ' + delta + ' ore"><span>' + delta + '</span><span class="unit">h</span></p>' +
       '<div class="comparison"><span>' + (deadlinePassed ? 'Entro il termine' : 'Reali') + '<strong>' + fmt(m.actual) + ' h</strong></span><span>Attese alla data<strong>' + fmt(m.expected) + ' h</strong></span></div></div>' +
-      '<p class="track-note ' + (m.deadlineStatus === 'missed' ? 'missed-badge' : '') + '">' + note + '</p></section>';
+      hoursBar(m) + '<p class="track-note ' + (m.deadlineStatus === 'missed' ? 'missed-badge' : '') + '">' + note + '</p></section>';
   }).join('');
   return '<article class="metric specific-card" aria-label="Formazione specifica"><div class="metric-header"><h3>Formazione specifica</h3><span class="specific-total">' + fmt(result.sums.specific) + ' h registrate</span></div>' + tracks +
     '<p class="specific-explainer">Due ritmi distinti dall’avvio: 35 h entro 90 giorni e 50 h complessive entro il termine finale. Dopo una scadenza contano solo le ore svolte entro quel termine.</p></article>';
