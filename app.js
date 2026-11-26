@@ -90,10 +90,13 @@ function generalCard(m) {
 }
 
 function specificCard(result) {
-  const tracks = result.specificComparisons.map(m => {
+  const asOf = getAsOf();
+  const [first, final] = result.specificComparisons;
+  const ordered = asOf > first.date ? [final, first] : [first, final];
+  const tracks = ordered.map(m => {
     const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
     const label = m.key === 'first' ? 'Entro 90 giorni · 70%' : 'Entro il terzultimo mese · 100%';
-    const deadlinePassed = getAsOf() > m.date;
+    const deadlinePassed = asOf > m.date;
     const completion = m.recovered ? ' goal-complete goal-late' : m.completed ? ' goal-complete' : '';
     const note = m.recovered ? 'Traguardo completato dopo la scadenza' : m.deadlineStatus === 'met' ? 'Scadenza rispettata' : m.deadlineStatus === 'missed'
       ? 'Scadenza non rispettata: mancavano ' + fmt(m.remaining) + ' h.'
