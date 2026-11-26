@@ -6,8 +6,9 @@ const fmt = (n, digits = 2) => new Intl.NumberFormat('it-IT', { maximumFractionD
 const dateLabel = date => new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'));
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let workbook = null, current = null, generation = 0;
-let vacations = [], vacationWeeks = DEFAULT_VACATION_WEEKS;
+let vacations = [], vacationWeeks = DEFAULT_VACATION_WEEKS, vacationsTaken = false;
 try {
+  vacationsTaken = localStorage.getItem('presenze-vacations-taken') === 'true';
   const savedWeeks = localStorage.getItem('presenze-vacation-weeks');
   if (savedWeeks !== null) { const parsed = Number(savedWeeks); vacationDays(parsed); vacationWeeks = parsed; }
 } catch {}
@@ -23,6 +24,8 @@ for (let i = 0; i < 4; i++) {
   $('vacation-end-' + (i + 1)).value = vacations[i]?.end || '';
 }
 setAsOf(today());
+$('vacations-taken').checked = vacationsTaken;
+updateVacationControls();
 
 function updateThemeControl() {
   const light = document.documentElement.dataset.theme === 'light';
@@ -84,7 +87,7 @@ function generalCard(m) {
   return '<article class="metric general-card' + (m.completed ? ' goal-complete' : '') + '" aria-label="Formazione generale">' +
     '<div class="metric-header"><h3>Formazione generale</h3>' + (m.completed ? '<span class="status">Completata</span>' : '') + '</div>' +
     '<p class="difference"><span>' + fmt(m.actual) + '</span><span class="unit">h fatte</span></p>' +
-    '<div class="comparison"><span>Obiettivo<strong>' + fmt(m.goal) + ' h</strong></span><span>Mancanti<strong>' + fmt(m.remaining) + ' h</strong></span></div>' +
+    '<p class="general-target"><strong>Obiettivo ' + fmt(m.goal) + ' ore · Mancano ' + fmt(m.remaining) + ' ore</strong></p>' +
     '<div class="hours-visual" aria-hidden="true"><div class="hours-rail"><span class="general-progress" style="width:' + progress + '%"></span></div>' +
     '<div class="hours-scale"><span>0 h</span><span>' + fmt(m.goal) + ' h</span></div></div></article>';
 }
@@ -141,7 +144,7 @@ function render() {
   const asOf = getAsOf();
   if (!asOf || !$('as-of').checkValidity()) return;
   let result;
-  try { result = summarize(workbook?.records ?? [], asOf, vacations, vacationWeeks); }
+  try { result = summarize(workbook?.records ?? [], asOf, vacationsTaken ? [] : vacations, vacationsTaken ? 0 : vacationWeeks); }
   catch (err) { message(err.message, true); return; }
   current = result;
   const active = !!workbook;
@@ -162,9 +165,10 @@ function render() {
   $('vacation-duration').textContent = 'Il ritmo delle ore totali è calcolato su ' + t.activeDuration + ' giorni disponibili (365 − ' + t.vacationDays + ').';
   $('vacation-summary').textContent = t.activeElapsed + ' giorni disponibili trascorsi su ' + t.activeDuration + '; ' + t.vacationElapsed + ' giorni di ferie già trascorsi.' +
     (t.unscheduledVacation ? ' ' + t.unscheduledVacation + ' giorni senza date, considerati ancora da fruire.' : ' Tutti i ' + t.vacationDays + ' giorni sono pianificati.');
-  $('pace-note').textContent = t.unscheduledVacation
-    ? 'Ritmo su ' + t.activeDuration + ' giorni. Stima: ' + t.unscheduledVacation + ' giorni di ferie ancora senza date.'
-    : 'Ritmo su ' + t.activeDuration + ' giorni. Periodi di ferie tutti impostati.';
+  const pace = 'Ritmo su ' + t.activeDuration + ' giorni.';
+  if (vacationsTaken || !t.vacationDays) $('pace-note').textContent = pace;
+  else if (t.unscheduledVacation) $('pace-note').textContent = pace + ' Stima: ' + t.unscheduledVacation + ' giorni di ferie ancora senza date.';
+  else $('pace-note').textContent = pace + ' Periodi di ferie tutti impostati.';
   if (!active) {
     $('months').innerHTML = '';
     $('month-totals').hidden = true;
@@ -255,6 +259,20 @@ $('as-of-picker').addEventListener('change', () => {
   if ($('as-of-picker').value) { setAsOf($('as-of-picker').value); render(); }
 });
 $('today').addEventListener('click',() => { setAsOf(today()); render(); });
+function updateVacationControls() {
+  $('vacations-taken-answer').textContent = vacationsTaken ? 'Sì' : 'No';
+  $('vacation-weeks').disabled = vacationsTaken;
+  $('vacation-panel').hidden = vacationsTaken;
+  $('vacation-planned-notice').hidden = vacationsTaken;
+  $('vacation-taken-notice').hidden = !vacationsTaken;
+  $('weeks-feedback').hidden = true;
+}
+$('vacations-taken').addEventListener('change', () => {
+  vacationsTaken = $('vacations-taken').checked;
+  try { localStorage.setItem('presenze-vacations-taken', String(vacationsTaken)); } catch {}
+  updateVacationControls();
+  render();
+});
 $('vacation-weeks').addEventListener('change', () => {
   const next = Number($('vacation-weeks').value);
   try { vacationDates(vacations, next); }
@@ -320,8 +338,12 @@ $('export').addEventListener('click',() => {
   rows.push([],['Mese','Servizio alla data','Generale alla data','Specifica alla data','Rendicontabili alla data','Rendicontabili tutto il file']);
   for(const m of current.months) rows.push([m.key,number(m.service),number(m.general),number(m.specific),number(m.total),number(m.all)]);
   rows.push(['TOTALE',number(current.sums.service),number(current.sums.general),number(current.sums.specific),number(current.sums.total),number(current.all.total)]);
-  rows.push([],['Metodo ore totali',current.time.activeDuration + ' giorni disponibili: 365 meno ' + current.time.vacationDays + ' di ferie (' + vacationWeeks + ' settimane). Formazione già inclusa nel totale.'],['Giorni disponibili trascorsi',current.time.activeElapsed],['Giorni di ferie trascorsi',current.time.vacationElapsed],['Giorni di ferie non pianificati (assunti futuri)',current.time.unscheduledVacation]);
-  for(const period of vacations) rows.push(['Periodo ferie',period.start,period.end]);
+  const t = current.time;
+  const vacationMethod = vacationsTaken
+    ? 'Ferie obbligatorie già fatte. Ritmo su ' + t.activeDuration + ' giorni.'
+    : t.activeDuration + ' giorni disponibili: 365 meno ' + t.vacationDays + ' di ferie (' + t.vacationWeeks + ' settimane).';
+  rows.push([],['Metodo ore totali',vacationMethod + ' Formazione già inclusa nel totale.'],['Giorni disponibili trascorsi',t.activeElapsed],['Giorni di ferie trascorsi',t.vacationElapsed],['Giorni di ferie non pianificati (assunti futuri)',t.unscheduledVacation]);
+  if (!vacationsTaken) for (const period of vacations) rows.push(['Periodo ferie',period.start,period.end]);
   rows.push([],['Specifica: traguardo','Scadenza inclusa','Ore entro termine e data confronto','Ore mancanti al termine','Esito']);
   for(const m of current.milestones) rows.push([m.goal + ' h cumulative',m.date,number(m.actual),number(m.remaining),milestoneText[m.status]]);
   rows.push([],['Assenze alla data','Giorni utilizzati','Limite','Giorni residui']);

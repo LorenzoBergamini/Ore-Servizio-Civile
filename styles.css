@@ -74,3 +74,34 @@ html[data-theme="light"] .goal-complete.goal-late {
 @media (prefers-reduced-motion: reduce) {
   .metric.goal-complete, .specific-track.goal-complete { animation: none; }
 }
+
+.general-target {
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: auto;
+}
+.vacation-notice-copy { flex: 1 1 280px; }
+.vacation-settings { display: flex; align-items: center; gap: 18px; }
+.vacation-settings .vacations-taken {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.vacations-taken-choice { display: inline-flex; align-items: center; gap: 5px; }
+.vacations-taken-choice input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--equal);
+}
+.vacations-taken-choice span { min-width: 2ch; }
+.vacation-settings select:disabled { opacity: .55; cursor: default; }
+@media (max-width: 640px) {
+  .general-target { text-align: center; }
+  .vacation-settings { flex: 1 1 100%; flex-direction: column; gap: 3px; }
+  .vacation-notice-copy { flex-basis: 100%; }
+}
