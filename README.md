@@ -57,7 +57,7 @@ Vengono ricalcolate le formule delle colonne rilevanti, comprese quelle condivis
 
 ## Metodo di confronto
 
-Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le settimane di ferie sono configurabili (0–10 intere); ogni settimana equivale a **7 giorni di calendario**. Il valore iniziale di quattro settimane esclude 28 giorni, lasciandone 337. Gli obiettivi annuali non diminuiscono. Per totale rendicontabile e formazione generale:
+Il servizio dura **365 giorni**, inclusi entrambi gli estremi. Le settimane di ferie sono configurabili (0–10 intere); ogni settimana equivale a **7 giorni di calendario**. Il valore iniziale di quattro settimane esclude 28 giorni, lasciandone 337. Gli obiettivi annuali non diminuiscono. Per il totale rendicontabile:
 
 `giorni disponibili trascorsi = giorni di calendario trascorsi − giorni di ferie già trascorsi`
 
@@ -131,8 +131,10 @@ Per controllare manualmente il layout mobile, apri `tests/responsive.html` sul s
 
 `vendor/jszip.min.js` include JSZip 3.10.1, distribuito secondo le licenze MIT o GPLv3. Il progetto usa l'opzione MIT; il testo completo è in `vendor/JSZip-LICENSE.md`. Le dipendenze npm sono richieste soltanto per i test; il sito usa i file locali inclusi.
 
-Il selettore aggiorna immediatamente totale e generale, le note e il CSV. Le scadenze della specifica non cambiano. Una riduzione incompatibile con periodi già salvati viene rifiutata senza cancellare le date; correggere prima i periodi.
+Il selettore aggiorna immediatamente il ritmo delle ore totali, le note e il CSV. Le scadenze della specifica non cambiano. Una riduzione incompatibile con periodi già salvati viene rifiutata senza cancellare le date; correggere prima i periodi.
 
 La data di confronto è sempre visualizzata e inserita come gg/mm/aaaa, indipendentemente dalla lingua del browser. Il calendario e il tasto Oggi restano disponibili. Internamente i calcoli usano date ISO; il CSV mostra la data di confronto in formato italiano.
 
-Barre ore: scala fissa da zero all’obiettivo, punto per le ore reali e tratteggio per quelle attese. Il segmento di scostamento è rosso sotto il ritmo, verde sopra, ambra in pari. Due barre nella specifica, rispettivamente su 35 e 50 ore. Nessun allungamento artificiale dei piccoli scostamenti; gli eventuali superamenti dell’obiettivo sono indicati separatamente.
+Barre di totale e specifica: scala fissa da zero all’obiettivo, punto per le ore reali e tratteggio per quelle attese. Il segmento di scostamento è rosso sotto il ritmo, verde sopra, ambra in pari. Due barre nella specifica, rispettivamente su 35 e 50 ore. Nessun allungamento artificiale dei piccoli scostamenti; gli eventuali superamenti dell’obiettivo sono indicati separatamente.
+
+La formazione generale mostra ore fatte, obiettivo di 30 ore e ore mancanti. Il bordo dorato segnala il completamento. Nella specifica, un traguardo recuperato dopo la scadenza ha sfondo arancione e conserva il confronto con le ore svolte entro il termine. Il riquadro della specifica si completa quando entrambi i traguardi sono raggiunti.

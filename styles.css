@@ -25,3 +25,52 @@ main{max-width:1120px;margin:auto;padding:25px 0 0}.importbar{display:flex;align
 .date-entry{position:relative;display:inline-flex;align-items:center}.date-control .date-entry #as-of{width:142px;padding-right:32px;font-variant-numeric:tabular-nums}.date-entry #open-calendar{position:absolute;right:3px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:30px;height:30px;border:0;background:transparent;color:var(--muted);cursor:pointer;padding:0}.date-entry .calendar-picker{position:absolute;left:0;bottom:0;width:1px!important;height:1px;min-height:0!important;padding:0!important;opacity:0;pointer-events:none}.date-control #as-of:invalid:not(:focus){border-color:var(--below-line)}@media(max-width:640px){.date-control .date-entry #as-of{width:128px;font-size:11px}.importbar.loaded .date-control .date-entry #as-of{width:119px;font-size:10px;padding-left:7px;padding-right:28px}.date-entry #open-calendar{right:1px;width:26px}}
 
 .hours-visual{--gap-color:var(--equal);margin:23px 0 0;min-width:0}.hours-visual.above{--gap-color:var(--above)}.hours-visual.below{--gap-color:var(--below)}.hours-legend{display:flex;gap:13px;align-items:center;font-size:9px;color:var(--muted);margin-bottom:10px}.hours-legend>span{display:inline-flex;align-items:center;gap:5px}.hours-legend i{display:inline-block}.legend-real{width:7px;height:7px;border-radius:50%;background:var(--ink)}.legend-expected{height:10px;border-left:2px dashed var(--ink)}.hours-rail{height:8px;border-radius:4px;background:var(--soft);position:relative;isolation:isolate;box-shadow:inset 0 0 0 1px var(--line)}.hours-common,.hours-gap{display:block;position:absolute;top:0;height:100%;border-radius:4px}.hours-common{left:0;background:var(--muted);opacity:.55}.hours-gap{background:var(--gap-color)}.hours-expected{position:absolute;top:-5px;height:18px;border-left:2px dashed var(--ink);transform:translateX(-1px);z-index:2}.hours-real{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:var(--ink);border:2px solid var(--paper);box-shadow:0 0 0 1px var(--ink);transform:translate(-50%,-50%);z-index:3}.hours-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:9px;font-variant-numeric:tabular-nums}.hours-overflow{display:block;color:var(--above);font-size:9px;line-height:1.6;margin-top:5px}.specific-track .hours-visual{margin-top:12px}.specific-track .hours-legend{font-size:8px;gap:10px;margin-bottom:8px}.specific-track .hours-rail{height:6px}.specific-track .hours-real{width:8px;height:8px}.specific-track .hours-expected{top:-4px;height:14px}.specific-track .hours-scale{font-size:8px;margin-top:7px}.metric:not(.specific-card):not(.absence-card) .hours-visual{flex-shrink:0}.metric:not(.specific-card):not(.absence-card) .metric-target{margin-top:14px}@media(max-width:640px){.hours-visual{margin-top:22px}.hours-legend,.hours-scale{font-size:10px}.specific-track .hours-legend,.specific-track .hours-scale{font-size:9px}}
+
+.general-card { --result-color: var(--accent); }
+.general-card .general-progress {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--result-color);
+}
+.track-note strong { font-weight: 750; color: var(--ink); }
+.track-note.missed-badge strong { color: inherit; }
+
+@property --goal-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.metric.goal-complete, .specific-track.goal-complete {
+  --goal-surface: #423519;
+  --goal-text: #f4d784;
+  --result-color: var(--goal-text);
+  border-color: #c29442;
+  background: var(--goal-surface);
+}
+.metric.goal-complete.goal-late, .specific-track.goal-complete.goal-late {
+  --goal-surface: #4b2a17;
+  --goal-text: #ffc391;
+}
+html[data-theme="light"] .goal-complete {
+  --goal-surface: #fff3c8;
+  --goal-text: #725213;
+}
+html[data-theme="light"] .goal-complete.goal-late {
+  --goal-surface: #ffe4cc;
+  --goal-text: #853f15;
+}
+@supports (background: conic-gradient(from 0deg, #a97526, #ffed9d, #a97526)) {
+  .metric.goal-complete, .specific-track.goal-complete {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--goal-surface), var(--goal-surface)) padding-box,
+      conic-gradient(from var(--goal-angle, 0deg), #a97526, #ffed9d 18%, #d5a34a 35%, #9a681d 65%, #a97526) border-box;
+    animation: goal-border-rotation 4s linear infinite;
+  }
+}
+@keyframes goal-border-rotation { to { --goal-angle: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .metric.goal-complete, .specific-track.goal-complete { animation: none; }
+}

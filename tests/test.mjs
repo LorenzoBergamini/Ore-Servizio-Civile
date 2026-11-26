@@ -109,7 +109,7 @@ await test('Specifica: curva 70% al giorno 90 e 100% al termine del decimo mese'
   assert.equal(specificExpected('2027-09-17'),50);
   const result=summarize([], '2026-11-11');
   assert(Math.abs(result.metrics.total.expected-1145*55/337)<1e-10);
-  assert(Math.abs(result.metrics.general.expected-30*55/337)<1e-10);
+  assert.deepEqual(result.metrics.general, {actual:0, goal:30, remaining:30, completed:false});
   assert(Math.abs(result.metrics.specific.expected-35*55/90)<1e-10);
 });
 await test('Scadenze: ore nel giorno limite valide; recuperi tardivi non sanano il termine', () => {
@@ -145,9 +145,14 @@ await test('Specifica: recupero tardivo non cambia lo scostamento del primo term
   assert.equal(first.delta,-1); assert.equal(first.deadlineStatus,'missed');
   assert.equal(final.actual,50); assert.equal(final.status,'above');
   assert.equal(final.deadlineStatus,'met');
+  assert.equal(first.recovered,true);
+  assert.equal(final.recovered,false);
+  assert.equal(specificComparisons(rows,'2026-12-16')[0].recovered,false);
   const late=specificComparisons([{date:'2027-07-18',specific:50}],'2027-09-17');
   assert.equal(late[1].actual,0); assert.equal(late[1].expected,50);
   assert.equal(late[1].delta,-50); assert.equal(late[1].deadlineStatus,'missed');
+  assert.equal(late[1].recovered,true);
+  assert.equal(specificComparisons([{date:'2027-09-18',specific:50}],'2027-09-18')[1].recovered,false);
 });
 await test('Ferie: dati Excel mantenuti e incoerenza segnalata; scadenze non rinviate', () => {
   const records=[{date:'2026-10-01',total:5,service:5,general:0,specific:0}];
@@ -274,7 +279,7 @@ if (process.argv[2]) await test('File originale: 13 mesi, 365 date, totali e con
   assert.equal(result.sums.service, 161.5);
   assert.equal(data.warnings.length, 0);
   assert.equal(result.metrics.total.status, 'below');
-  assert.equal(result.metrics.general.status, 'above');
+  assert.deepEqual(result.metrics.general, {actual:15, goal:30, remaining:15, completed:false});
   assert.equal(result.metrics.specific.status, 'below');
   assert.equal(result.lastEntry, '2026-11-11');
   console.log(JSON.stringify({ actual:result.sums, expected:Object.fromEntries(Object.entries(result.metrics).map(([k,m])=>[k,m.expected])), delta:Object.fromEntries(Object.entries(result.metrics).map(([k,m])=>[k,m.delta])) },null,2));

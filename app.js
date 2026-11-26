@@ -1,4 +1,4 @@
-import { today, displayDate, parseDisplayDate, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=9';
+import { today, displayDate, parseDisplayDate, summarize, vacationDates, vacationDays, DEFAULT_VACATION_WEEKS } from './src/metrics.js?v=11';
 import { readWorkbook } from './src/workbook.js?v=6';
 
 const $ = id => document.getElementById(id);
@@ -69,15 +69,24 @@ function hoursBar(m) {
 function card(category, result) {
   if (category.key === 'specific') return specificCard(result);
   const m = result.metrics[category.key];
+  if (category.key === 'general') return generalCard(m);
   const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
-  const late = category.key === 'specific' && result.milestones.some(item => item.status === 'missed');
-  return '<article class="metric ' + m.status + '" aria-label="' + category.title + '">' +
-    '<div class="metric-header"><h3>' + category.title + '</h3><span class="status">' + shortStatus[m.status] + '</span></div>' +
+  return '<article class="metric ' + m.status + (m.completed ? ' goal-complete' : '') + '" aria-label="' + category.title + '">' +
+    '<div class="metric-header"><h3>' + category.title + '</h3><span class="status">' + (m.completed ? 'Completato' : shortStatus[m.status]) + '</span></div>' +
     '<p class="difference" aria-label="Scostamento: ' + delta + ' ore"><span>' + delta + '</span><span class="unit">h</span></p>' +
     '<div class="comparison"><span>Reali<strong>' + fmt(m.actual) + ' h</strong></span><span>Attese<strong>' + fmt(m.expected) + ' h</strong></span></div>' +
     hoursBar(m) + '<p class="metric-target">Obiettivo ' + fmt(m.goal,0) + ' h · ' + (m.completed ? 'raggiunto' : 'mancano ' + fmt(m.remaining) + ' h') + '</p>' +
-    (late ? '<p class="late-warning">Una scadenza della specifica non è stata rispettata.</p>' : '') +
     '</article>';
+}
+
+function generalCard(m) {
+  const progress = Math.max(0, Math.min(100, m.actual / m.goal * 100));
+  return '<article class="metric general-card' + (m.completed ? ' goal-complete' : '') + '" aria-label="Formazione generale">' +
+    '<div class="metric-header"><h3>Formazione generale</h3>' + (m.completed ? '<span class="status">Completata</span>' : '') + '</div>' +
+    '<p class="difference"><span>' + fmt(m.actual) + '</span><span class="unit">h fatte</span></p>' +
+    '<div class="comparison"><span>Obiettivo<strong>' + fmt(m.goal) + ' h</strong></span><span>Mancanti<strong>' + fmt(m.remaining) + ' h</strong></span></div>' +
+    '<div class="hours-visual" aria-hidden="true"><div class="hours-rail"><span class="general-progress" style="width:' + progress + '%"></span></div>' +
+    '<div class="hours-scale"><span>0 h</span><span>' + fmt(m.goal) + ' h</span></div></div></article>';
 }
 
 function specificCard(result) {
@@ -85,17 +94,21 @@ function specificCard(result) {
     const delta = m.status === 'equal' ? '0' : (m.delta > 0 ? '+' : '−') + fmt(Math.abs(m.delta));
     const label = m.key === 'first' ? 'Entro 90 giorni · 70%' : 'Entro il terzultimo mese · 100%';
     const deadlinePassed = getAsOf() > m.date;
-    const note = m.deadlineStatus === 'met' ? 'Scadenza rispettata' : m.deadlineStatus === 'missed'
+    const completion = m.recovered ? ' goal-complete goal-late' : m.completed ? ' goal-complete' : '';
+    const note = m.recovered ? 'Traguardo completato dopo la scadenza' : m.deadlineStatus === 'met' ? 'Scadenza rispettata' : m.deadlineStatus === 'missed'
       ? 'Scadenza non rispettata: mancavano ' + fmt(m.remaining) + ' h.'
       : 'Mancano ' + fmt(m.remaining) + ' h al traguardo' + (m.daysLeft ? ' · ' + m.daysLeft + ' giorni' : ' · scadenza oggi');
-    return '<section class="specific-track ' + m.status + '" aria-label="' + label + '">' +
-      '<div class="track-header"><h4>' + label + '</h4><span class="status">' + shortStatus[m.status] + '</span></div>' +
+    return '<section class="specific-track ' + m.status + completion + '" aria-label="' + label + '">' +
+      '<div class="track-header"><h4>' + label + '</h4><span class="status">' + (completion ? 'Completato' : shortStatus[m.status]) + '</span></div>' +
       '<p class="track-deadline">' + dateLabel(m.date) + ' · obiettivo ' + fmt(m.goal,0) + ' h</p>' +
       '<div class="track-values"><p class="difference" aria-label="Scostamento: ' + delta + ' ore"><span>' + delta + '</span><span class="unit">h</span></p>' +
       '<div class="comparison"><span>' + (deadlinePassed ? 'Entro il termine' : 'Reali') + '<strong>' + fmt(m.actual) + ' h</strong></span><span>Attese alla data<strong>' + fmt(m.expected) + ' h</strong></span></div></div>' +
-      hoursBar(m) + '<p class="track-note ' + (m.deadlineStatus === 'missed' ? 'missed-badge' : '') + '">' + note + '</p></section>';
+      hoursBar(m) + '<p class="track-note ' + (m.deadlineStatus === 'missed' && !m.recovered ? 'missed-badge' : '') + '"><strong>' + note + '</strong></p></section>';
   }).join('');
-  return '<article class="metric specific-card" aria-label="Formazione specifica"><div class="metric-header"><h3>Formazione specifica</h3><span class="specific-total">' + fmt(result.sums.specific) + ' h registrate</span></div>' + tracks +
+  const completed = result.specificComparisons.every(m => m.completed || m.recovered);
+  const late = result.specificComparisons.some(m => m.recovered);
+  const completion = completed ? ' goal-complete' + (late ? ' goal-late' : '') : '';
+  return '<article class="metric specific-card' + completion + '" aria-label="Formazione specifica"><div class="metric-header"><h3>Formazione specifica</h3><span class="specific-total">' + fmt(result.sums.specific) + ' h registrate</span></div>' + tracks +
     '<p class="specific-explainer">Due ritmi distinti dall’avvio: 35 h entro 90 giorni e 50 h complessive entro il termine finale. Dopo una scadenza contano solo le ore svolte entro quel termine.</p></article>';
 }
 
@@ -143,7 +156,7 @@ function render() {
   const weeksLabel = vacationWeeks + (vacationWeeks === 1 ? ' settimana' : ' settimane');
   $('vacation-assumption').textContent = weeksLabel + ' di ferie obbligatorie';
   $('vacation-compact').textContent = weeksLabel + ' · ' + t.vacationDays + ' giorni esclusi';
-  $('vacation-duration').textContent = 'Il ritmo di totale e formazione generale è calcolato su ' + t.activeDuration + ' giorni disponibili (365 − ' + t.vacationDays + ').';
+  $('vacation-duration').textContent = 'Il ritmo delle ore totali è calcolato su ' + t.activeDuration + ' giorni disponibili (365 − ' + t.vacationDays + ').';
   $('vacation-summary').textContent = t.activeElapsed + ' giorni disponibili trascorsi su ' + t.activeDuration + '; ' + t.vacationElapsed + ' giorni di ferie già trascorsi.' +
     (t.unscheduledVacation ? ' ' + t.unscheduledVacation + ' giorni senza date, considerati ancora da fruire.' : ' Tutti i ' + t.vacationDays + ' giorni sono pianificati.');
   $('pace-note').textContent = t.unscheduledVacation
@@ -288,16 +301,23 @@ $('clear').addEventListener('click',() => {
 $('export').addEventListener('click',() => {
   if (!workbook || !current) return;
   const number = n => String(Math.round(n*100)/100).replace('.',',');
-  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',displayDate(getAsOf())],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo','Attese alla data','Scostamento','Stato']];
+  const rows = [['Riepilogo servizio civile','Dati del file caricato'],['Data confronto',displayDate(getAsOf())],['Periodo','18/09/2026 - 17/09/2027'],[],['Categoria','Ore alla data','Obiettivo','Attese alla data','Scostamento','Stato','Ore mancanti']];
   for(const c of categories) {
     if(c.key === 'specific') {
       for(const m of current.specificComparisons) rows.push(['Specifica · ' + (m.key === 'first' ? '90 giorni' : 'termine finale') + ' · ' + m.date,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]);
-    } else { const m=current.metrics[c.key]; rows.push([c.title,number(m.actual),number(m.goal),number(m.expected),number(m.delta),statusText[m.status]]); }
+    } else {
+      const m = current.metrics[c.key];
+      if (c.key === 'general') {
+        rows.push([c.title, number(m.actual), number(m.goal), '', '', m.completed ? 'Completata' : 'Da completare', number(m.remaining)]);
+      } else {
+        rows.push([c.title, number(m.actual), number(m.goal), number(m.expected), number(m.delta), statusText[m.status], number(m.remaining)]);
+      }
+    }
   }
   rows.push([],['Mese','Servizio alla data','Generale alla data','Specifica alla data','Rendicontabili alla data','Rendicontabili tutto il file']);
   for(const m of current.months) rows.push([m.key,number(m.service),number(m.general),number(m.specific),number(m.total),number(m.all)]);
   rows.push(['TOTALE',number(current.sums.service),number(current.sums.general),number(current.sums.specific),number(current.sums.total),number(current.all.total)]);
-  rows.push([],['Metodo totale e generale',current.time.activeDuration + ' giorni disponibili: 365 meno ' + current.time.vacationDays + ' di ferie (' + vacationWeeks + ' settimane). Formazione già inclusa nel totale.'],['Giorni disponibili trascorsi',current.time.activeElapsed],['Giorni di ferie trascorsi',current.time.vacationElapsed],['Giorni di ferie non pianificati (assunti futuri)',current.time.unscheduledVacation]);
+  rows.push([],['Metodo ore totali',current.time.activeDuration + ' giorni disponibili: 365 meno ' + current.time.vacationDays + ' di ferie (' + vacationWeeks + ' settimane). Formazione già inclusa nel totale.'],['Giorni disponibili trascorsi',current.time.activeElapsed],['Giorni di ferie trascorsi',current.time.vacationElapsed],['Giorni di ferie non pianificati (assunti futuri)',current.time.unscheduledVacation]);
   for(const period of vacations) rows.push(['Periodo ferie',period.start,period.end]);
   rows.push([],['Specifica: traguardo','Scadenza inclusa','Ore entro termine e data confronto','Ore mancanti al termine','Esito']);
   for(const m of current.milestones) rows.push([m.goal + ' h cumulative',m.date,number(m.actual),number(m.remaining),milestoneText[m.status]]);

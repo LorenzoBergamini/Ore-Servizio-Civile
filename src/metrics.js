@@ -103,11 +103,14 @@ export function metric(actual, goal, fraction) {
 
 export function specificComparisons(records, asOf) {
   const elapsed = Math.max(0, dateDay(asOf) - dateDay(START) + 1);
+  const actualToDate = records.filter(row => row.date >= START && row.date <= END && row.date <= asOf)
+    .reduce((sum, row) => sum + row.specific, 0);
   return specificMilestones(records, asOf).map(milestone => {
     const duration = dateDay(milestone.date) - dateDay(START) + 1;
+    const recovered = milestone.status === 'missed' && actualToDate >= milestone.goal;
     return { ...metric(milestone.actual, milestone.goal, Math.min(1, elapsed / duration)),
       key: milestone.key, date: milestone.date, daysLeft: milestone.daysLeft,
-      deadlineStatus: milestone.status };
+      deadlineStatus: milestone.status, recovered };
   });
 }
 
@@ -170,8 +173,16 @@ export function summarize(records, asOf, vacations = [], weeks = DEFAULT_VACATIO
     for (const k of Object.keys(sums)) { const value = k === 'total' ? effectiveTotal : row[k]; sums[k] += value; m[k] += value; }
     if (hasHours && (!lastEntry || row.date > lastEntry)) lastEntry = row.date;
   }
-  const metrics = Object.fromEntries(Object.entries(GOALS).map(([k, goal]) => [k, metric(sums[k], goal,
-    k === 'specific' ? specificExpected(asOf) / goal : time.activeFraction)]));
+  const metrics = {
+    total: metric(sums.total, GOALS.total, time.activeFraction),
+    general: {
+      actual: sums.general,
+      goal: GOALS.general,
+      remaining: Math.max(0, GOALS.general - sums.general),
+      completed: sums.general >= GOALS.general
+    },
+    specific: metric(sums.specific, GOALS.specific, specificExpected(asOf) / GOALS.specific)
+  };
   return { time, sums, all, metrics, milestones: specificMilestones(records, asOf), specificComparisons: specificComparisons(records, asOf),
     absences: absenceSummary(records, asOf), illnessHours: { removed: sickHoursRemoved, removedAll: allSickHoursRemoved, unverifiedDays: unverifiedSickDays },
     months: [...months.values()].sort((a, b) => a.key.localeCompare(b.key)), lastEntry, futureCount, vacationConflicts };
